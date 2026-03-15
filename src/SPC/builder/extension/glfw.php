@@ -23,6 +23,12 @@ class glfw extends Extension
     public function patchBeforeConfigure(): bool
     {
         FileSystem::replaceFileStr(SOURCE_PATH . '/php-src/configure', '-lglfw ', '-lglfw3 ');
+
+        // ogt_vox_c_wrapper.cpp requires the C++ standard library
+        $cxxLib = PHP_OS_FAMILY === 'Darwin' ? '-lc++' : '-lstdc++';
+        $extraLibs = trim($this->builder->getOption('extra-libs', '') . ' ' . $cxxLib);
+        $this->builder->setOption('extra-libs', $extraLibs);
+
         return true;
     }
 
