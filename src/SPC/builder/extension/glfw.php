@@ -25,11 +25,25 @@ class glfw extends Extension
         FileSystem::replaceFileStr(SOURCE_PATH . '/php-src/configure', '-lglfw ', '-lglfw3 ');
 
         // ogt_vox_c_wrapper.cpp requires the C++ standard library
-        $cxxLib = PHP_OS_FAMILY === 'Darwin' ? '-lc++' : '-lstdc++';
-        $existing = getenv('SPC_EXTRA_LIBS') ?: '';
-        if (!str_contains($existing, $cxxLib)) {
-            putenv('SPC_EXTRA_LIBS=' . trim($existing . ' ' . $cxxLib));
+        $extraLibs = [];
+        if (PHP_OS_FAMILY === 'Darwin') {
+            $extraLibs[] = '-lc++';
+        } elseif (PHP_OS_FAMILY === 'Linux') {
+            $extraLibs[] = '-lstdc++';
+            // GLFW X11 backend dependencies
+            $extraLibs = array_merge($extraLibs, [
+                '-lX11', '-lXrandr', '-lXinerama', '-lXcursor', '-lXi',
+                '-lXext', '-lXfixes', '-lXrender', '-lxcb', '-lXau', '-lXdmcp',
+            ]);
         }
+
+        $existing = getenv('SPC_EXTRA_LIBS') ?: '';
+        foreach ($extraLibs as $lib) {
+            if (!str_contains($existing, $lib)) {
+                $existing .= ' ' . $lib;
+            }
+        }
+        putenv('SPC_EXTRA_LIBS=' . trim($existing));
 
         return true;
     }
