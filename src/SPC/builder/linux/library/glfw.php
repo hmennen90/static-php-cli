@@ -22,7 +22,7 @@ class glfw extends LinuxLibraryBase
                 '-DGLFW_BUILD_EXAMPLES=OFF',
                 '-DGLFW_BUILD_TESTS=OFF',
                 '-DGLFW_BUILD_WAYLAND=OFF',
-                '-DCMAKE_FIND_ROOT_PATH=' . BUILD_ROOT_PATH . ';/usr',
+                '"-DCMAKE_FIND_ROOT_PATH=' . BUILD_ROOT_PATH . ';/usr"',
             )
             ->build('.');
         // patch pkgconf
