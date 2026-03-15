@@ -26,8 +26,10 @@ class glfw extends Extension
 
         // ogt_vox_c_wrapper.cpp requires the C++ standard library
         $cxxLib = PHP_OS_FAMILY === 'Darwin' ? '-lc++' : '-lstdc++';
-        $extraLibs = trim($this->builder->getOption('extra-libs', '') . ' ' . $cxxLib);
-        $this->builder->setOption('extra-libs', $extraLibs);
+        $existing = getenv('SPC_EXTRA_LIBS') ?: '';
+        if (!str_contains($existing, $cxxLib)) {
+            putenv('SPC_EXTRA_LIBS=' . trim($existing . ' ' . $cxxLib));
+        }
 
         return true;
     }
