@@ -30,10 +30,13 @@ class glfw extends Extension
             $extraLibs[] = '-lc++';
         } elseif (PHP_OS_FAMILY === 'Linux') {
             $extraLibs[] = '-lstdc++';
-            // GLFW X11 backend dependencies
+            // GLFW X11 backend dependencies — X11 libs are only available as .so on Alpine,
+            // so switch to dynamic linking for these, then back to static
             $extraLibs = array_merge($extraLibs, [
+                '-Wl,-Bdynamic',
                 '-lX11', '-lXrandr', '-lXinerama', '-lXcursor', '-lXi',
                 '-lXext', '-lXfixes', '-lXrender', '-lxcb', '-lXau', '-lXdmcp',
+                '-Wl,-Bstatic',
             ]);
         }
 
