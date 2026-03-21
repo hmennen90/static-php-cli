@@ -47,11 +47,10 @@ class steamworks extends Extension
             logger()->debug("Looking for dylib at: {$dylib} (exists: " . (file_exists($dylib) ? 'yes' : 'no') . ')');
             if (file_exists($dylib)) {
                 copy($dylib, $osxDir . '/libsteam_api.dylib');
-                // Copy to buildroot/lib for artifact upload and buildroot/bin for sanity test
                 @mkdir(BUILD_ROOT_PATH . '/lib', 0755, true);
                 copy($dylib, BUILD_ROOT_PATH . '/lib/libsteam_api.dylib');
-                @mkdir(BUILD_ROOT_PATH . '/bin', 0755, true);
-                copy($dylib, BUILD_ROOT_PATH . '/bin/libsteam_api.dylib');
+                // Copy next to where micro sanity test runs (@loader_path resolution)
+                copy($dylib, SOURCE_PATH . '/libsteam_api.dylib');
             }
         } elseif (PHP_OS_FAMILY === 'Linux') {
             $linuxDir = $sdkDest . '/redistributable_bin/linux64';
