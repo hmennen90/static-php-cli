@@ -221,6 +221,17 @@
         ],
         "lib-depends-windows": []
     },
+    "steamworks": {
+        "support": {
+            "Windows": "wip",
+            "BSD": "no",
+            "Linux": "yes"
+        },
+        "notes": true,
+        "type": "external",
+        "arg-type": "custom",
+        "source": "ext-steamworks"
+    },
     "gmp": {
         "support": {
             "Windows": "wip",

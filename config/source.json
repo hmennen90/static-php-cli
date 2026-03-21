@@ -152,6 +152,19 @@
             "path": "LICENSE"
         }
     },
+    "ext-steamworks": {
+        "type": "git",
+        "url": "https://github.com/hmennen90/php-steamworks",
+        "rev": "v0.3.0",
+        "license": {
+            "type": "file",
+            "path": "LICENSE"
+        }
+    },
+    "steamworks-sdk": {
+        "type": "custom",
+        "note": "Steamworks SDK must be provided manually (NDA). Place in downloads/steamworks-sdk/"
+    },
     "ext-gmssl": {
         "type": "ghtar",
         "repo": "gmssl/GmSSL-PHP",
