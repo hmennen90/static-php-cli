@@ -24,15 +24,23 @@ class glfw extends LinuxLibraryBase
             }
         }
         // Symlink all X11/GL library files (static .a and shared .so) into buildroot
+        // Search both /usr/lib/ (Alpine) and multiarch paths like /usr/lib/x86_64-linux-gnu/ (Ubuntu/Debian)
+        $libDirs = array_filter(array_unique([
+            '/usr/lib',
+            '/usr/lib/' . php_uname('m') . '-linux-gnu',       // x86_64-linux-gnu, aarch64-linux-gnu
+            '/usr/lib/' . php_uname('m') . '-linux-musl',      // musl variant
+        ]), 'is_dir');
         $prefixes = ['libX', 'libxcb', 'libXau', 'libXdmcp', 'libGL', 'libEGL'];
         $linked = 0;
-        foreach ($prefixes as $prefix) {
-            foreach (glob("/usr/lib/{$prefix}*") as $lib) {
-                if (!is_file($lib) && !is_link($lib)) continue;
-                $dst = BUILD_ROOT_PATH . '/lib/' . basename($lib);
-                if (!file_exists($dst)) {
-                    @symlink($lib, $dst);
-                    $linked++;
+        foreach ($libDirs as $libDir) {
+            foreach ($prefixes as $prefix) {
+                foreach (glob("{$libDir}/{$prefix}*") as $lib) {
+                    if (!is_file($lib) && !is_link($lib)) continue;
+                    $dst = BUILD_ROOT_PATH . '/lib/' . basename($lib);
+                    if (!file_exists($dst)) {
+                        @symlink($lib, $dst);
+                        $linked++;
+                    }
                 }
             }
         }
