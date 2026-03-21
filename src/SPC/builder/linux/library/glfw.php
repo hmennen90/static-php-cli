@@ -23,15 +23,11 @@ class glfw extends LinuxLibraryBase
                 symlink($src, $dst);
             }
         }
-        // Symlink X11/GL static and shared libraries into buildroot
-        $patterns = [
-            '/usr/lib/libX*.a', '/usr/lib/libX*.so*',
-            '/usr/lib/libxcb*.a', '/usr/lib/libxcb*.so*',
-            '/usr/lib/libGL*.a', '/usr/lib/libGL*.so*',
-            '/usr/lib/libEGL*.a', '/usr/lib/libEGL*.so*',
-        ];
-        foreach ($patterns as $pattern) {
-            foreach (glob($pattern) as $lib) {
+        // Symlink all X11/GL library files (static .a and shared .so) into buildroot
+        $prefixes = ['libX', 'libxcb', 'libXau', 'libXdmcp', 'libGL', 'libEGL'];
+        foreach ($prefixes as $prefix) {
+            foreach (glob("/usr/lib/{$prefix}*") as $lib) {
+                if (!is_file($lib) && !is_link($lib)) continue;
                 $dst = BUILD_ROOT_PATH . '/lib/' . basename($lib);
                 if (!file_exists($dst)) {
                     @symlink($lib, $dst);
