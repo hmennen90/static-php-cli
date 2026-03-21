@@ -63,6 +63,14 @@ class steamworks extends Extension
             }
         }
 
+        // For static builds, PHP_ADD_LIBRARY_WITH_PATH in config.m4 only affects
+        // SHARED_LIBADD which is ignored. We need to add the link flags manually.
+        $existing = getenv('SPC_EXTRA_LIBS') ?: '';
+        if (!str_contains($existing, '-lsteam_api')) {
+            $existing .= ' -lsteam_api';
+        }
+        putenv('SPC_EXTRA_LIBS=' . trim($existing));
+
         // Copy mock SDK headers into public/steam/ layout (matches config.m4 check)
         // Note: FileSystem::copyDir uses cp -r which nests if target exists,
         // so only create the parent dir and let copyDir create the final "steam" dir
