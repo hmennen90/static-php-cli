@@ -317,7 +317,7 @@ class LinuxBuilder extends UnixBuilderBase
     private function getMakeExtraVars(): array
     {
         $config = (new SPCConfigUtil($this, ['libs_only_deps' => true, 'absolute_libs' => true]))->config($this->ext_list, $this->lib_list, $this->getOption('with-suggested-exts'), $this->getOption('with-suggested-libs'));
-        $static = SPCTarget::isStatic() ? '-all-static' : '';
+        $static = (SPCTarget::isStatic() && !getenv('SPC_NO_STATIC_LINK')) ? '-all-static' : '';
         $lib = BUILD_LIB_PATH;
         return array_filter([
             'EXTRA_CFLAGS' => getenv('SPC_CMD_VAR_PHP_MAKE_EXTRA_CFLAGS'),
