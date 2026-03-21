@@ -11,17 +11,6 @@ on:
         options:
           - '8.5'
           - '8.4'
-      os:
-        required: true
-        description: Target platform
-        default: 'macos-aarch64'
-        type: choice
-        options:
-          - 'macos-aarch64'
-          - 'macos-x86_64'
-          - 'linux-x86_64'
-          - 'linux-aarch64'
-          - 'windows-x86_64'
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -31,22 +20,31 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        os:
+          - name: macos-aarch64
+            runner: macos-15
+            platform: macos
+          - name: macos-x86_64
+            runner: macos-15-intel
+            platform: macos
+          - name: linux-x86_64
+            runner: ubuntu-latest
+            platform: linux
+          - name: linux-aarch64
+            runner: ubuntu-24.04-arm
+            platform: linux
+          - name: windows-x86_64
+            runner: windows-latest
+            platform: windows
         variant:
-          - name: "base"
+          - name: base
             extensions: "glfw,mbstring,zip"
             steam: false
-          - name: "steam"
+          - name: steam
             extensions: "glfw,mbstring,zip,steamworks"
             steam: true
-    name: "${{ matrix.variant.name }} / ${{ inputs.os }}"
-    runs-on: >-
-      ${{
-        inputs.os == 'macos-aarch64' && 'macos-15' ||
-        inputs.os == 'macos-x86_64' && 'macos-15-intel' ||
-        inputs.os == 'linux-aarch64' && 'ubuntu-24.04-arm' ||
-        inputs.os == 'windows-x86_64' && 'windows-latest' ||
-        'ubuntu-latest'
-      }}
+    name: "${{ matrix.variant.name }} / ${{ matrix.os.name }}"
+    runs-on: ${{ matrix.os.runner }}
     timeout-minutes: 120
     steps:
       - name: "Checkout"
@@ -60,7 +58,7 @@ jobs:
           extensions: curl, openssl, mbstring
           ini-values: memory_limit=-1
 
-      # For Steam variant: clone php-steamworks which bundles the SDK redistributable libs
+      # ── Prepare Steamworks SDK (all platforms) ──
       - name: "Prepare Steamworks SDK"
         if: matrix.variant.steam
         shell: bash
@@ -71,9 +69,9 @@ jobs:
           cp -r /tmp/php-steamworks/sdk/public source/steamworks-sdk/public || true
           rm -rf /tmp/php-steamworks
 
-      # ── Unix builds (macOS / Linux) ──
-      - name: "Download sources (macOS)"
-        if: startsWith(inputs.os, 'macos-')
+      # ── macOS ──
+      - name: "Download & Build (macOS)"
+        if: matrix.os.platform == 'macos'
         run: |
           composer update --no-dev --classmap-authoritative
           ./bin/spc doctor --auto-fix || true
@@ -82,73 +80,53 @@ jobs:
             --for-extensions=${{ matrix.variant.extensions }} \
             --ignore-cache-sources=php-src \
             --prefer-pre-built
+          ./bin/spc build ${{ matrix.variant.extensions }} --build-micro --debug
 
-      - name: "Build micro.sfx (macOS)"
-        if: startsWith(inputs.os, 'macos-')
-        run: ./bin/spc build ${{ matrix.variant.extensions }} --build-micro --debug
-
-      - name: "Download sources (Linux)"
-        if: startsWith(inputs.os, 'linux-')
+      # ── Linux ──
+      - name: "Download & Build (Linux)"
+        if: matrix.os.platform == 'linux'
         run: |
           ./bin/spc-alpine-docker download \
             --with-php=${{ inputs.php-version }} \
             --for-extensions=${{ matrix.variant.extensions }} \
             --ignore-cache-sources=php-src \
             --prefer-pre-built
+          ./bin/spc-alpine-docker build ${{ matrix.variant.extensions }} --build-micro --debug
 
-      - name: "Build micro.sfx (Linux)"
-        if: startsWith(inputs.os, 'linux-')
-        run: ./bin/spc-alpine-docker build ${{ matrix.variant.extensions }} --build-micro --debug
-
-      # ── Windows build ──
-      - name: "Cache Composer (Windows)"
-        if: inputs.os == 'windows-x86_64'
-        id: cache-composer-deps
-        uses: actions/cache@v4
-        with:
-          path: vendor
-          key: composer-dependencies
-
+      # ── Windows ──
       - name: "Install Composer deps (Windows)"
-        if: inputs.os == 'windows-x86_64' && steps.cache-composer-deps.outputs.cache-hit != 'true'
+        if: matrix.os.platform == 'windows'
         run: composer update --no-dev --classmap-authoritative
 
-      - name: "Doctor (Windows)"
-        if: inputs.os == 'windows-x86_64'
-        run: ./bin/spc doctor
-
-      - name: "Download sources (Windows)"
-        if: inputs.os == 'windows-x86_64'
+      - name: "Download & Build (Windows)"
+        if: matrix.os.platform == 'windows'
         run: |
+          ./bin/spc doctor
           ./bin/spc download --with-php="${{ inputs.php-version }}" --for-extensions="${{ matrix.variant.extensions }}" --prefer-pre-built
-
-      - name: "Build micro.sfx (Windows)"
-        if: inputs.os == 'windows-x86_64'
-        run: ./bin/spc build "${{ matrix.variant.extensions }}" --build-micro --debug
+          ./bin/spc build "${{ matrix.variant.extensions }}" --build-micro --debug
 
       # ── Upload logs on failure ──
       - name: "Upload build logs"
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: build-logs-${{ matrix.variant.name }}-${{ inputs.php-version }}-${{ inputs.os }}
+          name: build-logs-${{ matrix.variant.name }}-${{ inputs.php-version }}-${{ matrix.os.name }}
           path: log/
 
       # ── Upload artifacts ──
       - name: "Upload micro.sfx"
         uses: actions/upload-artifact@v4
         with:
-          name: micro-sfx-${{ matrix.variant.name }}-${{ inputs.php-version }}-${{ inputs.os }}
+          name: micro-sfx-${{ matrix.variant.name }}-${{ inputs.php-version }}-${{ matrix.os.name }}
           path: |
             buildroot/bin/micro.sfx
             buildroot/bin/micro.sfx.exe
 
-      # For Steam variant: also upload the dynamic lib that must be bundled
       - name: "Upload libsteam_api"
         if: matrix.variant.steam
         uses: actions/upload-artifact@v4
         with:
-          name: libsteam-api-${{ inputs.os }}
+          name: libsteam-api-${{ matrix.os.name }}
           path: |
             buildroot/lib/libsteam_api.dylib
             buildroot/lib/libsteam_api.so
@@ -157,5 +135,5 @@ jobs:
       - name: "Upload licenses"
         uses: actions/upload-artifact@v4
         with:
-          name: licenses-${{ matrix.variant.name }}-${{ inputs.php-version }}-${{ inputs.os }}
+          name: licenses-${{ matrix.variant.name }}-${{ inputs.php-version }}-${{ matrix.os.name }}
           path: buildroot/license/
