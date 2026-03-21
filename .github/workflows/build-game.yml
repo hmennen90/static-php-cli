@@ -84,7 +84,7 @@ jobs:
             --for-extensions=${{ matrix.variant.extensions }} \
             --ignore-cache-sources=php-src \
             --prefer-pre-built
-          ./bin/spc build ${{ matrix.variant.extensions }} --build-micro
+          ./bin/spc build ${{ matrix.variant.extensions }} --build-micro -I "memory_limit=-1"
 
       # ── Linux (Alpine for base, glibc/CentOS for steam since libsteam_api.so requires glibc) ──
       - name: "Download & Build (Linux)"
@@ -100,7 +100,7 @@ jobs:
             --for-extensions=${{ matrix.variant.extensions }} \
             --ignore-cache-sources=php-src \
             --prefer-pre-built
-          $SPC_CMD build ${{ matrix.variant.extensions }} --build-micro
+          $SPC_CMD build ${{ matrix.variant.extensions }} --build-micro -I "memory_limit=-1"
 
       # ── Windows ──
       - name: "Install Composer deps (Windows)"
@@ -112,7 +112,7 @@ jobs:
         run: |
           ./bin/spc doctor
           ./bin/spc download --with-php="${{ inputs.php-version }}" --for-extensions="${{ matrix.variant.extensions }}" --prefer-pre-built
-          ./bin/spc build "${{ matrix.variant.extensions }}" --build-micro
+          ./bin/spc build "${{ matrix.variant.extensions }}" --build-micro -I "memory_limit=-1"
 
       # ── Upload logs on failure ──
       - name: "Upload build logs"
