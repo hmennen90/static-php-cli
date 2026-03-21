@@ -146,3 +146,57 @@ jobs:
         with:
           name: licenses-${{ matrix.variant.name }}-${{ inputs.php-version }}-${{ matrix.os.name }}
           path: buildroot/license/
+
+  # ── Create GitHub Release with all micro.sfx binaries ──
+  release:
+    name: "Create Release"
+    needs: build
+    if: always() && contains(needs.build.result, 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Download all micro.sfx artifacts"
+        uses: actions/download-artifact@v4
+        with:
+          pattern: micro-sfx-*
+          path: release-assets/
+
+      - name: "Download all libsteam artifacts"
+        uses: actions/download-artifact@v4
+        with:
+          pattern: libsteam-api-*
+          path: release-assets/
+
+      - name: "Prepare release files"
+        run: |
+          mkdir -p release-files
+          # Package each artifact as a zip
+          cd release-assets
+          for dir in */; do
+            name="${dir%/}"
+            cd "$name"
+            zip -r "../../release-files/${name}.zip" .
+            cd ..
+          done
+
+      - name: "Create or update release"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="runtime-php${{ inputs.php-version }}"
+          TITLE="Game Runtime PHP ${{ inputs.php-version }}"
+
+          # Delete existing release if it exists
+          gh release delete "$TAG" -R ${{ github.repository }} --yes 2>/dev/null || true
+
+          # Create new release
+          gh release create "$TAG" \
+            -R ${{ github.repository }} \
+            --title "$TITLE" \
+            --notes "Pre-built micro.sfx binaries for game distribution.
+
+          **PHP Version:** ${{ inputs.php-version }}
+          **Extensions (base):** glfw, mbstring, zip
+          **Extensions (steam):** glfw, mbstring, zip, steamworks
+
+          Built by workflow run [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" \
+            release-files/*.zip
