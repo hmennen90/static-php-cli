@@ -25,15 +25,21 @@ class glfw extends LinuxLibraryBase
         }
         // Symlink all X11/GL library files (static .a and shared .so) into buildroot
         $prefixes = ['libX', 'libxcb', 'libXau', 'libXdmcp', 'libGL', 'libEGL'];
+        $linked = 0;
         foreach ($prefixes as $prefix) {
             foreach (glob("/usr/lib/{$prefix}*") as $lib) {
                 if (!is_file($lib) && !is_link($lib)) continue;
                 $dst = BUILD_ROOT_PATH . '/lib/' . basename($lib);
                 if (!file_exists($dst)) {
                     @symlink($lib, $dst);
+                    $linked++;
                 }
             }
         }
+        logger()->debug("Symlinked {$linked} X11/GL libs into buildroot");
+        // List what we have for debugging
+        $available = glob(BUILD_ROOT_PATH . '/lib/libX*');
+        logger()->debug('Available X11 libs in buildroot: ' . implode(', ', array_map('basename', $available)));
 
         UnixCMakeExecutor::create($this)
             ->setBuildDir("{$this->source_dir}/vendor/glfw")
