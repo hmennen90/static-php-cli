@@ -60,8 +60,47 @@ class steamworks extends Extension
         return true;
     }
 
+    public function patchBeforeWindowsConfigure(): bool
+    {
+        $sdkSource = SOURCE_PATH . '/steamworks-sdk';
+
+        // config.w32 expects SDK layout: <path>/public/steam/*.h and
+        // <path>/redistributable_bin/win64/steam_api64.lib
+        // Create this layout in BUILD_ROOT_PATH/steamworks-sdk/
+        $sdkDest = BUILD_ROOT_PATH . '/steamworks-sdk';
+
+        // Copy redistributable libs
+        $winLibDir = $sdkDest . '/redistributable_bin/win64';
+        @mkdir($winLibDir, 0755, true);
+        $lib = $sdkSource . '/redistributable_bin/win64/steam_api64.lib';
+        if (file_exists($lib)) {
+            copy($lib, $winLibDir . '/steam_api64.lib');
+        }
+        $dll = $sdkSource . '/redistributable_bin/win64/steam_api64.dll';
+        if (file_exists($dll)) {
+            // Also copy to buildroot/lib for artifact upload
+            @mkdir(BUILD_ROOT_PATH . '/lib', 0755, true);
+            copy($dll, BUILD_ROOT_PATH . '/lib/steam_api64.dll');
+        }
+
+        // Copy mock SDK headers into public/steam/ layout
+        $steamIncDir = $sdkDest . '/public/steam';
+        @mkdir($steamIncDir, 0755, true);
+        $mockHeaders = SOURCE_PATH . '/ext-steamworks/ci/mock_sdk/public/steam';
+        if (is_dir($mockHeaders)) {
+            FileSystem::copyDir($mockHeaders, $steamIncDir);
+        }
+
+        return true;
+    }
+
     public function getUnixConfigureArg(bool $shared = false): string
     {
         return '--with-steamworks=' . BUILD_ROOT_PATH;
+    }
+
+    public function getWindowsConfigureArg(bool $shared = false): string
+    {
+        return '--with-steamworks=' . BUILD_ROOT_PATH . '/steamworks-sdk';
     }
 }

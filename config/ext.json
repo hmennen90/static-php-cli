@@ -223,9 +223,10 @@
     },
     "steamworks": {
         "support": {
-            "Windows": "wip",
+            "Windows": "yes",
             "BSD": "no",
-            "Linux": "yes"
+            "Linux": "yes",
+            "Darwin": "yes"
         },
         "notes": true,
         "type": "external",

@@ -1,4 +1,4 @@
-name: "Build micro.sfx with Steam"
+name: "Build Game micro.sfx"
 
 on:
   workflow_dispatch:
@@ -21,10 +21,10 @@ on:
           - 'macos-x86_64'
           - 'linux-x86_64'
           - 'linux-aarch64'
+          - 'windows-x86_64'
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  BASE_EXTENSIONS: "glfw,mbstring,zip"
 
 jobs:
   build:
@@ -39,7 +39,14 @@ jobs:
             extensions: "glfw,mbstring,zip,steamworks"
             steam: true
     name: "${{ matrix.variant.name }} / ${{ inputs.os }}"
-    runs-on: ${{ inputs.os == 'macos-aarch64' && 'macos-15' || inputs.os == 'macos-x86_64' && 'macos-15-intel' || inputs.os == 'linux-aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
+    runs-on: >-
+      ${{
+        inputs.os == 'macos-aarch64' && 'macos-15' ||
+        inputs.os == 'macos-x86_64' && 'macos-15-intel' ||
+        inputs.os == 'linux-aarch64' && 'ubuntu-24.04-arm' ||
+        inputs.os == 'windows-x86_64' && 'windows-latest' ||
+        'ubuntu-latest'
+      }}
     timeout-minutes: 120
     steps:
       - name: "Checkout"
@@ -56,6 +63,7 @@ jobs:
       # For Steam variant: clone php-steamworks which bundles the SDK redistributable libs
       - name: "Prepare Steamworks SDK"
         if: matrix.variant.steam
+        shell: bash
         run: |
           git clone --depth 1 https://${{ github.token }}@github.com/hmennen90/php-steamworks.git /tmp/php-steamworks
           mkdir -p source/steamworks-sdk/redistributable_bin
@@ -63,7 +71,9 @@ jobs:
           cp -r /tmp/php-steamworks/sdk/public source/steamworks-sdk/public || true
           rm -rf /tmp/php-steamworks
 
-      - name: "Download sources"
+      # ── Unix builds (macOS / Linux) ──
+      - name: "Download sources (macOS)"
+        if: startsWith(inputs.os, 'macos-')
         run: |
           composer update --no-dev --classmap-authoritative
           ./bin/spc doctor --auto-fix || true
@@ -73,15 +83,57 @@ jobs:
             --ignore-cache-sources=php-src \
             --prefer-pre-built
 
-      - name: "Build micro.sfx"
-        run: |
-          ./bin/spc build ${{ matrix.variant.extensions }} --build-micro
+      - name: "Build micro.sfx (macOS)"
+        if: startsWith(inputs.os, 'macos-')
+        run: ./bin/spc build ${{ matrix.variant.extensions }} --build-micro
 
+      - name: "Download sources (Linux)"
+        if: startsWith(inputs.os, 'linux-')
+        run: |
+          ./bin/spc-alpine-docker download \
+            --with-php=${{ inputs.php-version }} \
+            --for-extensions=${{ matrix.variant.extensions }} \
+            --ignore-cache-sources=php-src \
+            --prefer-pre-built
+
+      - name: "Build micro.sfx (Linux)"
+        if: startsWith(inputs.os, 'linux-')
+        run: ./bin/spc-alpine-docker build ${{ matrix.variant.extensions }} --build-micro
+
+      # ── Windows build ──
+      - name: "Cache Composer (Windows)"
+        if: inputs.os == 'windows-x86_64'
+        id: cache-composer-deps
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-dependencies
+
+      - name: "Install Composer deps (Windows)"
+        if: inputs.os == 'windows-x86_64' && steps.cache-composer-deps.outputs.cache-hit != 'true'
+        run: composer update --no-dev --classmap-authoritative
+
+      - name: "Doctor (Windows)"
+        if: inputs.os == 'windows-x86_64'
+        run: ./bin/spc doctor
+
+      - name: "Download sources (Windows)"
+        if: inputs.os == 'windows-x86_64'
+        run: |
+          ./bin/spc download --with-php="${{ inputs.php-version }}" --for-extensions="${{ matrix.variant.extensions }}" --prefer-pre-built
+
+      - name: "Build micro.sfx (Windows)"
+        if: inputs.os == 'windows-x86_64'
+        run: ./bin/spc build "${{ matrix.variant.extensions }}" --build-micro
+
+      # ── Upload artifacts ──
       - name: "Upload micro.sfx"
         uses: actions/upload-artifact@v4
         with:
           name: micro-sfx-${{ matrix.variant.name }}-${{ inputs.php-version }}-${{ inputs.os }}
-          path: buildroot/bin/micro.sfx
+          path: |
+            buildroot/bin/micro.sfx
+            buildroot/bin/micro.sfx.exe
 
       # For Steam variant: also upload the dynamic lib that must be bundled
       - name: "Upload libsteam_api"
@@ -92,6 +144,7 @@ jobs:
           path: |
             buildroot/lib/libsteam_api.dylib
             buildroot/lib/libsteam_api.so
+            buildroot/lib/steam_api64.dll
 
       - name: "Upload licenses"
         uses: actions/upload-artifact@v4
