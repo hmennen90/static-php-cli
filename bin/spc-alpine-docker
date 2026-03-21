@@ -3,7 +3,7 @@
 set -e
 
 # This file is using docker to run commands
-SPC_DOCKER_VERSION=v6
+SPC_DOCKER_VERSION=v7
 
 # Detect docker can run
 if ! which docker >/dev/null; then
@@ -108,7 +108,19 @@ RUN apk update; \
         wget \
         xz \
         gettext-dev \
-        binutils-gold
+        binutils-gold \
+        libx11-dev \
+        libxrandr-dev \
+        libxinerama-dev \
+        libxcursor-dev \
+        libxi-dev \
+        libxext-dev \
+        libxfixes-dev \
+        libxrender-dev \
+        libxcb-dev \
+        libxau-dev \
+        libxdmcp-dev \
+        mesa-dev
 
 RUN curl -#fSL https://dl.static-php.dev/static-php-cli/bulk/php-8.4.4-cli-linux-\$(uname -m).tar.gz | tar -xz -C /usr/local/bin && \
     chmod +x /usr/local/bin/php

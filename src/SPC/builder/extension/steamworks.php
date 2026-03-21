@@ -61,8 +61,8 @@ class steamworks extends Extension
                 copy($so, $linuxDir . '/libsteam_api.so');
                 @mkdir(BUILD_ROOT_PATH . '/lib', 0755, true);
                 copy($so, BUILD_ROOT_PATH . '/lib/libsteam_api.so');
-                @mkdir(BUILD_ROOT_PATH . '/bin', 0755, true);
-                copy($so, BUILD_ROOT_PATH . '/bin/libsteam_api.so');
+                // Copy next to where micro sanity test runs (LD_LIBRARY_PATH / rpath)
+                copy($so, SOURCE_PATH . '/libsteam_api.so');
             }
         }
 
