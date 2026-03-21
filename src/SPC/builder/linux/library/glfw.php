@@ -23,30 +23,19 @@ class glfw extends LinuxLibraryBase
                 symlink($src, $dst);
             }
         }
-        // Symlink X11 libraries
-        foreach (glob('/usr/lib/libX*.so*') as $lib) {
-            $dst = BUILD_ROOT_PATH . '/lib/' . basename($lib);
-            if (!file_exists($dst)) {
-                symlink($lib, $dst);
-            }
-        }
-        foreach (glob('/usr/lib/libxcb*.so*') as $lib) {
-            $dst = BUILD_ROOT_PATH . '/lib/' . basename($lib);
-            if (!file_exists($dst)) {
-                symlink($lib, $dst);
-            }
-        }
-        // GL/EGL libs for mesa
-        foreach (glob('/usr/lib/libGL*.so*') as $lib) {
-            $dst = BUILD_ROOT_PATH . '/lib/' . basename($lib);
-            if (!file_exists($dst)) {
-                symlink($lib, $dst);
-            }
-        }
-        foreach (glob('/usr/lib/libEGL*.so*') as $lib) {
-            $dst = BUILD_ROOT_PATH . '/lib/' . basename($lib);
-            if (!file_exists($dst)) {
-                symlink($lib, $dst);
+        // Symlink X11/GL static and shared libraries into buildroot
+        $patterns = [
+            '/usr/lib/libX*.a', '/usr/lib/libX*.so*',
+            '/usr/lib/libxcb*.a', '/usr/lib/libxcb*.so*',
+            '/usr/lib/libGL*.a', '/usr/lib/libGL*.so*',
+            '/usr/lib/libEGL*.a', '/usr/lib/libEGL*.so*',
+        ];
+        foreach ($patterns as $pattern) {
+            foreach (glob($pattern) as $lib) {
+                $dst = BUILD_ROOT_PATH . '/lib/' . basename($lib);
+                if (!file_exists($dst)) {
+                    @symlink($lib, $dst);
+                }
             }
         }
 

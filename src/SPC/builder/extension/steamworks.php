@@ -105,9 +105,10 @@ class steamworks extends Extension
         }
         $dll = $sdkSource . '/redistributable_bin/win64/steam_api64.dll';
         if (file_exists($dll)) {
-            // Also copy to buildroot/lib for artifact upload
             @mkdir(BUILD_ROOT_PATH . '/lib', 0755, true);
             copy($dll, BUILD_ROOT_PATH . '/lib/steam_api64.dll');
+            // Copy next to where micro sanity test runs
+            copy($dll, SOURCE_PATH . '/steam_api64.dll');
         }
         // Also copy .lib to buildroot/lib so the linker can find it
         if (file_exists($lib)) {
