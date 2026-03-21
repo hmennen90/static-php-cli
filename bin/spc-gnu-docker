@@ -3,7 +3,7 @@
 set -e
 
 # This file is using docker to run commands
-SPC_DOCKER_VERSION=v6
+SPC_DOCKER_VERSION=v7
 
 # Detect docker can run
 if ! which docker >/dev/null; then
@@ -90,7 +90,10 @@ RUN yum update -y && \
     yum install -y devtoolset-10-gcc-* devtoolset-10-libatomic-devel
 RUN echo "source scl_source enable devtoolset-10" >> /etc/bashrc
 RUN source /etc/bashrc
-RUN yum install -y which
+RUN yum install -y which \
+    libX11-devel libXrandr-devel libXinerama-devel libXcursor-devel \
+    libXi-devel libXext-devel libXfixes-devel libXrender-devel \
+    libxcb-devel libXau-devel libXdmcp-devel mesa-libGL-devel
 
 RUN curl -o cmake.tgz -#fSL https://github.com/Kitware/CMake/releases/download/v3.31.4/cmake-3.31.4-linux-$SPC_USE_ARCH.tar.gz && \
     mkdir /cmake && \

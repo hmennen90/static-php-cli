@@ -82,36 +82,21 @@ jobs:
             --prefer-pre-built
           ./bin/spc build ${{ matrix.variant.extensions }} --build-micro --debug
 
-      # ── Linux (Alpine Docker for base, native Ubuntu for steam since libsteam_api.so requires glibc) ──
-      - name: "Install X11 dev packages (Linux steam)"
-        if: matrix.os.platform == 'linux' && matrix.variant.steam
+      # ── Linux (Alpine for base, glibc/CentOS for steam since libsteam_api.so requires glibc) ──
+      - name: "Download & Build (Linux)"
+        if: matrix.os.platform == 'linux'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev \
-            libxi-dev libxext-dev libxfixes-dev libxrender-dev libxcb1-dev libxau-dev libxdmcp-dev \
-            libgl-dev
-
-      - name: "Download & Build (Linux base)"
-        if: matrix.os.platform == 'linux' && !matrix.variant.steam
-        run: |
-          ./bin/spc-alpine-docker download \
+          if [ "${{ matrix.variant.steam }}" = "true" ]; then
+            SPC_CMD="./bin/spc-gnu-docker"
+          else
+            SPC_CMD="./bin/spc-alpine-docker"
+          fi
+          $SPC_CMD download \
             --with-php=${{ inputs.php-version }} \
             --for-extensions=${{ matrix.variant.extensions }} \
             --ignore-cache-sources=php-src \
             --prefer-pre-built
-          ./bin/spc-alpine-docker build ${{ matrix.variant.extensions }} --build-micro --debug
-
-      - name: "Download & Build (Linux steam)"
-        if: matrix.os.platform == 'linux' && matrix.variant.steam
-        run: |
-          composer update --no-dev --classmap-authoritative
-          ./bin/spc doctor --auto-fix || true
-          ./bin/spc download \
-            --with-php=${{ inputs.php-version }} \
-            --for-extensions=${{ matrix.variant.extensions }} \
-            --ignore-cache-sources=php-src \
-            --prefer-pre-built
-          ./bin/spc build ${{ matrix.variant.extensions }} --build-micro --debug
+          $SPC_CMD build ${{ matrix.variant.extensions }} --build-micro --debug
 
       # ── Windows ──
       - name: "Install Composer deps (Windows)"
