@@ -61,11 +61,13 @@ class steamworks extends Extension
         }
 
         // Copy mock SDK headers into public/steam/ layout (matches config.m4 check)
-        $steamIncDir = $sdkDest . '/public/steam';
-        @mkdir($steamIncDir, 0755, true);
+        // Note: FileSystem::copyDir uses cp -r which nests if target exists,
+        // so only create the parent dir and let copyDir create the final "steam" dir
+        $publicDir = $sdkDest . '/public';
+        @mkdir($publicDir, 0755, true);
         $mockHeaders = SOURCE_PATH . '/ext-steamworks/ci/mock_sdk/public/steam';
         if (is_dir($mockHeaders)) {
-            FileSystem::copyDir($mockHeaders, $steamIncDir);
+            FileSystem::copyDir($mockHeaders, $publicDir . '/steam');
         }
 
         return true;
@@ -93,13 +95,18 @@ class steamworks extends Extension
             @mkdir(BUILD_ROOT_PATH . '/lib', 0755, true);
             copy($dll, BUILD_ROOT_PATH . '/lib/steam_api64.dll');
         }
+        // Also copy .lib to buildroot/lib so the linker can find it
+        if (file_exists($lib)) {
+            @mkdir(BUILD_ROOT_PATH . '/lib', 0755, true);
+            copy($lib, BUILD_ROOT_PATH . '/lib/steam_api64.lib');
+        }
 
         // Copy mock SDK headers into public/steam/ layout
-        $steamIncDir = $sdkDest . '/public/steam';
-        @mkdir($steamIncDir, 0755, true);
+        $publicDir = $sdkDest . '/public';
+        @mkdir($publicDir, 0755, true);
         $mockHeaders = SOURCE_PATH . '/ext-steamworks/ci/mock_sdk/public/steam';
         if (is_dir($mockHeaders)) {
-            FileSystem::copyDir($mockHeaders, $steamIncDir);
+            FileSystem::copyDir($mockHeaders, $publicDir . '/steam');
         }
 
         return true;
