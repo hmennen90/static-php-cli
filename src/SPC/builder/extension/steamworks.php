@@ -47,9 +47,11 @@ class steamworks extends Extension
             logger()->debug("Looking for dylib at: {$dylib} (exists: " . (file_exists($dylib) ? 'yes' : 'no') . ')');
             if (file_exists($dylib)) {
                 copy($dylib, $osxDir . '/libsteam_api.dylib');
-                // Also copy to buildroot/lib for artifact upload
+                // Copy to buildroot/lib for artifact upload and buildroot/bin for sanity test
                 @mkdir(BUILD_ROOT_PATH . '/lib', 0755, true);
                 copy($dylib, BUILD_ROOT_PATH . '/lib/libsteam_api.dylib');
+                @mkdir(BUILD_ROOT_PATH . '/bin', 0755, true);
+                copy($dylib, BUILD_ROOT_PATH . '/bin/libsteam_api.dylib');
             }
         } elseif (PHP_OS_FAMILY === 'Linux') {
             $linuxDir = $sdkDest . '/redistributable_bin/linux64';
@@ -60,6 +62,8 @@ class steamworks extends Extension
                 copy($so, $linuxDir . '/libsteam_api.so');
                 @mkdir(BUILD_ROOT_PATH . '/lib', 0755, true);
                 copy($so, BUILD_ROOT_PATH . '/lib/libsteam_api.so');
+                @mkdir(BUILD_ROOT_PATH . '/bin', 0755, true);
+                copy($so, BUILD_ROOT_PATH . '/bin/libsteam_api.so');
             }
         }
 

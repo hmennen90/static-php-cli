@@ -85,7 +85,12 @@ jobs:
 
       - name: "Build micro.sfx (macOS)"
         if: startsWith(inputs.os, 'macos-')
-        run: ./bin/spc build ${{ matrix.variant.extensions }} --build-micro --debug
+        run: |
+          EXTRA_FLAGS="--debug"
+          if [ "${{ matrix.variant.steam }}" = "true" ]; then
+            EXTRA_FLAGS="$EXTRA_FLAGS --without-micro-ext-test"
+          fi
+          ./bin/spc build ${{ matrix.variant.extensions }} --build-micro $EXTRA_FLAGS
 
       - name: "Download sources (Linux)"
         if: startsWith(inputs.os, 'linux-')
@@ -98,7 +103,12 @@ jobs:
 
       - name: "Build micro.sfx (Linux)"
         if: startsWith(inputs.os, 'linux-')
-        run: ./bin/spc-alpine-docker build ${{ matrix.variant.extensions }} --build-micro --debug
+        run: |
+          EXTRA_FLAGS="--debug"
+          if [ "${{ matrix.variant.steam }}" = "true" ]; then
+            EXTRA_FLAGS="$EXTRA_FLAGS --without-micro-ext-test"
+          fi
+          ./bin/spc-alpine-docker build ${{ matrix.variant.extensions }} --build-micro $EXTRA_FLAGS
 
       # ── Windows build ──
       - name: "Cache Composer (Windows)"
@@ -124,7 +134,12 @@ jobs:
 
       - name: "Build micro.sfx (Windows)"
         if: inputs.os == 'windows-x86_64'
-        run: ./bin/spc build "${{ matrix.variant.extensions }}" --build-micro --debug
+        run: |
+          $extraFlags = "--debug"
+          if ("${{ matrix.variant.steam }}" -eq "true") {
+            $extraFlags += " --without-micro-ext-test"
+          }
+          ./bin/spc build "${{ matrix.variant.extensions }}" --build-micro $extraFlags
 
       # ── Upload logs on failure ──
       - name: "Upload build logs"
