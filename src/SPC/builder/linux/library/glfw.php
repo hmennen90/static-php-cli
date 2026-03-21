@@ -27,7 +27,8 @@ class glfw extends LinuxLibraryBase
         // Search both /usr/lib/ (Alpine) and multiarch paths like /usr/lib/x86_64-linux-gnu/ (Ubuntu/Debian)
         $libDirs = array_filter(array_unique([
             '/usr/lib',
-            '/usr/lib/' . php_uname('m') . '-linux-gnu',       // x86_64-linux-gnu, aarch64-linux-gnu
+            '/usr/lib64',                                       // CentOS/RHEL
+            '/usr/lib/' . php_uname('m') . '-linux-gnu',       // x86_64-linux-gnu (Ubuntu/Debian)
             '/usr/lib/' . php_uname('m') . '-linux-musl',      // musl variant
         ]), 'is_dir');
         $prefixes = ['libX', 'libxcb', 'libXau', 'libXdmcp', 'libGL', 'libEGL'];
