@@ -39,12 +39,12 @@ class steamworks extends Extension
         $sdkDest = BUILD_ROOT_PATH . '/steamworks-sdk';
 
         // Copy redistributable libs
-        logger()->debug("Steamworks SDK source dir: {$sdkSource} (exists: " . (is_dir($sdkSource) ? 'yes' : 'no') . ')');
+
         if (PHP_OS_FAMILY === 'Darwin') {
             $osxDir = $sdkDest . '/redistributable_bin/osx';
             @mkdir($osxDir, 0755, true);
             $dylib = $sdkSource . '/redistributable_bin/osx/libsteam_api.dylib';
-            logger()->debug("Looking for dylib at: {$dylib} (exists: " . (file_exists($dylib) ? 'yes' : 'no') . ')');
+
             if (file_exists($dylib)) {
                 copy($dylib, $osxDir . '/libsteam_api.dylib');
                 @mkdir(BUILD_ROOT_PATH . '/lib', 0755, true);
@@ -56,7 +56,7 @@ class steamworks extends Extension
             $linuxDir = $sdkDest . '/redistributable_bin/linux64';
             @mkdir($linuxDir, 0755, true);
             $so = $sdkSource . '/redistributable_bin/linux64/libsteam_api.so';
-            logger()->debug("Looking for .so at: {$so} (exists: " . (file_exists($so) ? 'yes' : 'no') . ')');
+
             if (file_exists($so)) {
                 copy($so, $linuxDir . '/libsteam_api.so');
                 @mkdir(BUILD_ROOT_PATH . '/lib', 0755, true);

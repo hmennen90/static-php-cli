@@ -46,9 +46,6 @@ class glfw extends LinuxLibraryBase
             }
         }
         logger()->debug("Symlinked {$linked} X11/GL libs into buildroot");
-        // List what we have for debugging
-        $available = glob(BUILD_ROOT_PATH . '/lib/libX*');
-        logger()->debug('Available X11 libs in buildroot: ' . implode(', ', array_map('basename', $available)));
 
         UnixCMakeExecutor::create($this)
             ->setBuildDir("{$this->source_dir}/vendor/glfw")
