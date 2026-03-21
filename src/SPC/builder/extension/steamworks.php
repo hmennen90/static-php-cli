@@ -17,45 +17,56 @@ class steamworks extends Extension
             return false;
         }
         FileSystem::copyDir(SOURCE_PATH . '/ext-steamworks', SOURCE_PATH . '/php-src/ext/steamworks');
+
+        // PHP expects php_steamworks.h in the extension root, but it lives in src/
+        // Copy it to the root so internal_functions.c can find it on all platforms
+        $extDir = SOURCE_PATH . '/php-src/ext/steamworks';
+        $header = $extDir . '/src/php_steamworks.h';
+        if (file_exists($header) && !file_exists($extDir . '/php_steamworks.h')) {
+            copy($header, $extDir . '/php_steamworks.h');
+        }
+
         return true;
     }
 
     public function patchBeforeConfigure(): bool
     {
-        $libDir = BUILD_ROOT_PATH . '/lib';
-        $includeDir = BUILD_ROOT_PATH . '/include';
-
-        // Copy SDK redistributable library for linking.
-        // The Steamworks SDK is placed in downloads/steamworks-sdk/ manually (NDA).
         $sdkSource = SOURCE_PATH . '/steamworks-sdk';
+
+        // config.m4 expects SDK layout: <path>/public/steam/steam_api.h and
+        // <path>/redistributable_bin/{osx,linux64}/libsteam_api.{dylib,so}
+        // Create this layout in BUILD_ROOT_PATH/steamworks-sdk/
+        $sdkDest = BUILD_ROOT_PATH . '/steamworks-sdk';
+
+        // Copy redistributable libs
         if (PHP_OS_FAMILY === 'Darwin') {
+            $osxDir = $sdkDest . '/redistributable_bin/osx';
+            @mkdir($osxDir, 0755, true);
             $dylib = $sdkSource . '/redistributable_bin/osx/libsteam_api.dylib';
             if (file_exists($dylib)) {
-                copy($dylib, $libDir . '/libsteam_api.dylib');
+                copy($dylib, $osxDir . '/libsteam_api.dylib');
+                // Also copy to buildroot/lib for artifact upload
+                @mkdir(BUILD_ROOT_PATH . '/lib', 0755, true);
+                copy($dylib, BUILD_ROOT_PATH . '/lib/libsteam_api.dylib');
             }
         } elseif (PHP_OS_FAMILY === 'Linux') {
+            $linuxDir = $sdkDest . '/redistributable_bin/linux64';
+            @mkdir($linuxDir, 0755, true);
             $so = $sdkSource . '/redistributable_bin/linux64/libsteam_api.so';
             if (file_exists($so)) {
-                copy($so, $libDir . '/libsteam_api.so');
+                copy($so, $linuxDir . '/libsteam_api.so');
+                @mkdir(BUILD_ROOT_PATH . '/lib', 0755, true);
+                copy($so, BUILD_ROOT_PATH . '/lib/libsteam_api.so');
             }
         }
 
-        // Copy mock SDK headers (C-compatible) so configure can find them
-        $steamIncDir = $includeDir . '/steam';
-        if (!is_dir($steamIncDir)) {
-            @mkdir($steamIncDir, 0755, true);
-        }
+        // Copy mock SDK headers into public/steam/ layout (matches config.m4 check)
+        $steamIncDir = $sdkDest . '/public/steam';
+        @mkdir($steamIncDir, 0755, true);
         $mockHeaders = SOURCE_PATH . '/ext-steamworks/ci/mock_sdk/public/steam';
         if (is_dir($mockHeaders)) {
             FileSystem::copyDir($mockHeaders, $steamIncDir);
         }
-
-        // Add libsteam_api as dynamic link dependency
-        $existing = getenv('SPC_EXTRA_LIBS') ?: '';
-        if (!str_contains($existing, '-lsteam_api')) {
-            $existing .= ' -lsteam_api';
-        }
-        putenv('SPC_EXTRA_LIBS=' . trim($existing));
 
         return true;
     }
@@ -96,7 +107,7 @@ class steamworks extends Extension
 
     public function getUnixConfigureArg(bool $shared = false): string
     {
-        return '--with-steamworks=' . BUILD_ROOT_PATH;
+        return '--with-steamworks=' . BUILD_ROOT_PATH . '/steamworks-sdk';
     }
 
     public function getWindowsConfigureArg(bool $shared = false): string
