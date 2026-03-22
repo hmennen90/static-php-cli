@@ -38,10 +38,10 @@ jobs:
             platform: windows
         variant:
           - name: base
-            extensions: "glfw,mbstring,zip"
+            extensions: "glfw,mbstring,zip,phar"
             steam: false
           - name: steam
-            extensions: "glfw,mbstring,zip,steamworks"
+            extensions: "glfw,mbstring,zip,phar,steamworks"
             steam: true
         exclude:
           # Steam on Linux ARM64 not needed (Steam runs x86_64 only)
