@@ -210,7 +210,8 @@
         "support": {
             "Windows": "wip",
             "BSD": "no",
-            "Linux": "yes"
+            "Linux": "yes",
+            "Darwin": "yes"
         },
         "notes": true,
         "type": "external",
@@ -218,6 +219,11 @@
         "source": "ext-glfw",
         "lib-depends": [
             "glfw"
+        ],
+        "lib-depends-darwin": [
+            "glfw",
+            "moltenvk",
+            "vulkan-loader"
         ],
         "lib-depends-windows": []
     },
@@ -1300,5 +1306,42 @@
         "lib-depends": [
             "zstd"
         ]
+    },
+    "vulkan": {
+        "support": {
+            "Windows": "wip",
+            "BSD": "no",
+            "Linux": "yes",
+            "Darwin": "yes"
+        },
+        "notes": true,
+        "type": "external",
+        "arg-type": "custom",
+        "source": "ext-vulkan",
+        "lib-depends": [
+            "vulkan-loader"
+        ],
+        "lib-depends-darwin": [
+            "vulkan-loader",
+            "moltenvk"
+        ],
+        "lib-depends-windows": []
+    },
+    "metal": {
+        "support": {
+            "Windows": "no",
+            "BSD": "no",
+            "Linux": "no",
+            "Darwin": "yes"
+        },
+        "notes": true,
+        "type": "external",
+        "arg-type": "custom",
+        "source": "ext-metal",
+        "lib-depends-darwin": [
+            "moltenvk"
+        ],
+        "lib-depends-windows": [],
+        "lib-depends-linux": []
     }
 }

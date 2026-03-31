@@ -169,11 +169,18 @@
         "static-libs-unix": [
             "libglfw3.a"
         ],
+        "static-libs-macos": [
+            "libglfw3.a",
+            "libvulkan.a"
+        ],
         "frameworks": [
             "CoreVideo",
             "OpenGL",
             "Cocoa",
-            "IOKit"
+            "IOKit",
+            "Metal",
+            "QuartzCore",
+            "Foundation"
         ],
         "static-libs-linux": [
             "libglfw3.a"
@@ -1065,6 +1072,35 @@
         "headers-windows": [
             "zstd.h",
             "zstd_errors.h"
+        ]
+    },
+    "moltenvk": {
+        "source": "moltenvk",
+        "static-libs-macos": [
+            "libMoltenVK.a"
+        ],
+        "frameworks": [
+            "Metal",
+            "Foundation",
+            "QuartzCore",
+            "CoreGraphics",
+            "IOSurface",
+            "IOKit"
+        ],
+        "headers": [
+            "MoltenVK"
+        ]
+    },
+    "vulkan-loader": {
+        "source": "vulkan-loader",
+        "static-libs-macos": [
+            "libvulkan.a"
+        ],
+        "static-libs-linux": [
+            "libvulkan.a"
+        ],
+        "headers": [
+            "vulkan"
         ]
     }
 }

@@ -145,8 +145,8 @@
     },
     "ext-glfw": {
         "type": "git",
-        "url": "https://github.com/mario-deluna/php-glfw",
-        "rev": "master",
+        "url": "https://github.com/hmennen90/php-glfw",
+        "rev": "feat/metal-support",
         "license": {
             "type": "file",
             "path": "LICENSE"
@@ -1300,6 +1300,42 @@
         "repo": "facebook/zstd",
         "match": "zstd.+\\.tar\\.gz",
         "prefer-stable": true,
+        "license": {
+            "type": "file",
+            "path": "LICENSE"
+        }
+    },
+    "ext-vulkan": {
+        "type": "git",
+        "url": "https://github.com/hmennen90/php-vulkan",
+        "rev": "main",
+        "license": {
+            "type": "file",
+            "path": "LICENSE"
+        }
+    },
+    "ext-metal": {
+        "type": "git",
+        "url": "https://github.com/hmennen90/php-metal-gpu",
+        "rev": "main",
+        "license": {
+            "type": "file",
+            "path": "LICENSE"
+        }
+    },
+    "moltenvk": {
+        "type": "git",
+        "url": "https://github.com/KhronosGroup/MoltenVK",
+        "rev": "main",
+        "license": {
+            "type": "file",
+            "path": "LICENSE"
+        }
+    },
+    "vulkan-loader": {
+        "type": "git",
+        "url": "https://github.com/KhronosGroup/Vulkan-Loader",
+        "rev": "main",
         "license": {
             "type": "file",
             "path": "LICENSE"
