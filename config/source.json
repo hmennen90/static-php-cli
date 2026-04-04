@@ -1324,12 +1324,13 @@
         }
     },
     "moltenvk": {
-        "type": "git",
-        "url": "https://github.com/KhronosGroup/MoltenVK",
-        "rev": "main",
+        "type": "ghrel",
+        "repo": "KhronosGroup/MoltenVK",
+        "match": "MoltenVK-macos\\.tar",
+        "prefer-stable": true,
         "license": {
-            "type": "file",
-            "path": "LICENSE"
+            "type": "text",
+            "text": "Apache License 2.0"
         }
     },
     "vulkan-loader": {

@@ -222,8 +222,7 @@
         ],
         "lib-depends-darwin": [
             "glfw",
-            "moltenvk",
-            "vulkan-loader"
+            "moltenvk"
         ],
         "lib-depends-windows": []
     },
