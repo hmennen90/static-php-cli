@@ -998,6 +998,9 @@
         ],
         "headers": [
             "wtr/watcher-c.h"
+        ],
+        "frameworks": [
+            "CoreServices"
         ]
     },
     "xz": {
