@@ -170,8 +170,7 @@
             "libglfw3.a"
         ],
         "static-libs-macos": [
-            "libglfw3.a",
-            "libvulkan.a"
+            "libglfw3.a"
         ],
         "frameworks": [
             "CoreVideo",
