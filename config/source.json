@@ -1357,7 +1357,7 @@
         "rev": "16.2.0",
         "license": {
             "type": "file",
-            "path": "LICENSE"
+            "path": "LICENSE.txt"
         }
     },
     "spirv-cross": {
@@ -1375,7 +1375,7 @@
         "rev": "main",
         "license": {
             "type": "file",
-            "path": "LICENSE"
+            "path": "LICENSE.md"
         }
     }
 }
