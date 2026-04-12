@@ -125,9 +125,10 @@ class vio extends Extension
             @mkdir(dirname("{$buildDir}/{$vmaLo}"), 0755, true);
 
             $cxx = PHP_OS_FAMILY === 'Darwin' ? 'c++' : 'g++';
+            $phpIncludes = "-I{$buildDir} -I{$buildDir}/main -I{$buildDir}/Zend -I{$buildDir}/TSRM";
             shell()->cd($buildDir)->exec(
                 "/bin/sh {$buildDir}/libtool --silent --preserve-dup-deps --tag=CXX --mode=compile {$cxx} -std=c++14"
-                . " -I{$vmaInc} -I{$extInc} -I{$vulkanInc}"
+                . " -I{$vmaInc} -I{$extInc} -I{$vulkanInc} {$phpIncludes}"
                 . ' -DHAVE_VULKAN=1 -fPIC -O2'
                 . " -c {$vmaWrapper} -o {$vmaLo}"
             );
@@ -148,11 +149,12 @@ class vio extends Extension
                 $extInc = $buildDir . '/ext/vio/include';
                 @mkdir(dirname("{$buildDir}/{$metalLo}"), 0755, true);
 
+                $phpIncludes = "-I{$buildDir} -I{$buildDir}/main -I{$buildDir}/Zend -I{$buildDir}/TSRM";
                 shell()->cd($buildDir)->exec(
                     "/bin/sh {$buildDir}/libtool --silent --preserve-dup-deps --tag=CC --mode=compile cc"
                     . ' -x objective-c -fobjc-arc'
-                    . " -I{$extInc} -I{$vulkanInc} -I{$buildDir} -I{$buildDir}/main"
-                    . ' -DHAVE_VULKAN=1 -DHAVE_METAL=1 -fPIC -O2'
+                    . " -I{$extInc} -I{$vulkanInc} {$phpIncludes}"
+                    . ' -DHAVE_VULKAN=1 -DHAVE_METAL=1 -DHAVE_CONFIG_H -fPIC -O2'
                     . " -c {$metalSrc} -o {$metalLo}"
                 );
 
