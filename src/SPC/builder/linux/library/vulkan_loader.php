@@ -78,6 +78,7 @@ class vulkan_loader extends LinuxLibraryBase
             }
         }
 
+        // Build only (skip install which fails due to export set incompatibility with static builds)
         UnixCMakeExecutor::create($this)
             ->appendEnv(['PKG_CONFIG_PATH' => BUILD_ROOT_PATH . '/lib/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig'])
             ->addConfigureArgs(
@@ -87,6 +88,10 @@ class vulkan_loader extends LinuxLibraryBase
                 '-DBUILD_WSI_WAYLAND_SUPPORT=OFF',
                 '-DVULKAN_HEADERS_INSTALL_DIR=' . BUILD_ROOT_PATH,
             )
+            ->toStep(2)
             ->build();
+
+        // Manually install the static library (cmake install fails with STATIC due to export set issues)
+        copy($this->source_dir . '/build/loader/libvulkan.a', BUILD_LIB_PATH . '/libvulkan.a');
     }
 }
