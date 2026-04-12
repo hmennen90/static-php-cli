@@ -24,18 +24,23 @@ jobs:
           - name: macos-aarch64
             runner: macos-15
             platform: macos
+            gpu_extensions: ",vio,vulkan,metal"
           - name: macos-x86_64
             runner: macos-15-intel
             platform: macos
+            gpu_extensions: ",vio,vulkan,metal"
           - name: linux-x86_64
             runner: ubuntu-latest
             platform: linux
+            gpu_extensions: ",vio,vulkan"
           - name: linux-aarch64
             runner: ubuntu-24.04-arm
             platform: linux
+            gpu_extensions: ",vio,vulkan"
           - name: windows-x86_64
             runner: windows-latest
             platform: windows
+            gpu_extensions: ",vio,vulkan"
         variant:
           - name: base
             extensions: "glfw,mbstring,zip,phar"
@@ -81,10 +86,10 @@ jobs:
           ./bin/spc doctor --auto-fix || true
           ./bin/spc download \
             --with-php=${{ inputs.php-version }} \
-            --for-extensions=${{ matrix.variant.extensions }} \
+            --for-extensions=${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} \
             --ignore-cache-sources=php-src \
             --prefer-pre-built
-          ./bin/spc build ${{ matrix.variant.extensions }} --build-micro -I "memory_limit=-1"
+          ./bin/spc build ${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} --build-micro -I "memory_limit=-1"
 
       # ── Linux (Alpine for base, glibc/CentOS for steam since libsteam_api.so requires glibc) ──
       - name: "Download & Build (Linux)"
@@ -97,10 +102,10 @@ jobs:
           fi
           $SPC_CMD download \
             --with-php=${{ inputs.php-version }} \
-            --for-extensions=${{ matrix.variant.extensions }} \
+            --for-extensions=${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} \
             --ignore-cache-sources=php-src \
             --prefer-pre-built
-          $SPC_CMD build ${{ matrix.variant.extensions }} --build-micro -I "memory_limit=-1"
+          $SPC_CMD build ${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} --build-micro -I "memory_limit=-1"
 
       # ── Windows ──
       - name: "Install Composer deps (Windows)"
@@ -111,8 +116,8 @@ jobs:
         if: matrix.os.platform == 'windows'
         run: |
           ./bin/spc doctor
-          ./bin/spc download --with-php="${{ inputs.php-version }}" --for-extensions="${{ matrix.variant.extensions }}" --prefer-pre-built
-          ./bin/spc build "${{ matrix.variant.extensions }}" --build-micro -I "memory_limit=-1"
+          ./bin/spc download --with-php="${{ inputs.php-version }}" --for-extensions="${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }}" --prefer-pre-built
+          ./bin/spc build "${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }}" --build-micro -I "memory_limit=-1"
 
       # ── Upload logs on failure ──
       - name: "Upload build logs"
@@ -195,8 +200,8 @@ jobs:
             --notes "Pre-built micro.sfx binaries for game distribution.
 
           **PHP Version:** ${{ inputs.php-version }}
-          **Extensions (base):** glfw, mbstring, zip
-          **Extensions (steam):** glfw, mbstring, zip, steamworks
+          **Extensions (base):** glfw, vio, vulkan, metal (macOS), mbstring, zip, phar
+          **Extensions (steam):** glfw, vio, vulkan, metal (macOS), mbstring, zip, phar, steamworks
 
           Built by workflow run [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" \
             release-files/*.zip
