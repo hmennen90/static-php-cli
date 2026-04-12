@@ -25,13 +25,25 @@ class vio extends Extension
         // Fix library names in configure if needed
         FileSystem::replaceFileStr(SOURCE_PATH . '/php-src/configure', '-lglfw ', '-lglfw3 ');
 
-        // Fix strdup declaration in vio_shader_compiler.c — C23 requires explicit declarations
-        // and strdup is only available with _GNU_SOURCE or _POSIX_C_SOURCE >= 200809L
+        // Fix strdup declaration in vio_shader_compiler.c — C23 requires explicit declarations.
+        // strdup is POSIX, not standard C. Prepend feature macros and explicit declaration.
         $shaderCompiler = SOURCE_PATH . '/php-src/ext/vio/src/vio_shader_compiler.c';
         if (file_exists($shaderCompiler)) {
             $content = file_get_contents($shaderCompiler);
-            if (!str_contains($content, '_GNU_SOURCE')) {
-                file_put_contents($shaderCompiler, "#ifndef _GNU_SOURCE\n#define _GNU_SOURCE\n#endif\n" . $content);
+            if (!str_contains($content, 'STRDUP_DECLARED')) {
+                $preamble = <<<'C'
+                    /* static-php-cli: ensure strdup is available in strict C standard modes */
+                    #ifndef _GNU_SOURCE
+                    #define _GNU_SOURCE
+                    #endif
+                    #include <string.h>
+                    #ifndef STRDUP_DECLARED
+                    #define STRDUP_DECLARED
+                    extern char *strdup(const char *);
+                    #endif
+
+                    C;
+                file_put_contents($shaderCompiler, $preamble . $content);
             }
         }
 
