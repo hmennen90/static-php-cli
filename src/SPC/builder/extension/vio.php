@@ -17,6 +17,19 @@ class vio extends Extension
             return false;
         }
         FileSystem::copyDir(SOURCE_PATH . '/ext-vio', SOURCE_PATH . '/php-src/ext/vio');
+
+        // Stub out OpenGL backend — we use Vulkan/Metal, and the bundled GLAD has
+        // type mismatches (PFNGLTBUFFERMASK3DFXPROC etc.) that fail on CI compilers.
+        $stubComment = "/* OpenGL backend disabled for static Vulkan/Metal build */\n";
+        $gladC = SOURCE_PATH . '/php-src/ext/vio/vendor/glad/src/glad.c';
+        $openglC = SOURCE_PATH . '/php-src/ext/vio/src/backends/opengl/vio_opengl.c';
+        if (file_exists($gladC)) {
+            file_put_contents($gladC, $stubComment);
+        }
+        if (file_exists($openglC)) {
+            file_put_contents($openglC, $stubComment);
+        }
+
         return true;
     }
 
