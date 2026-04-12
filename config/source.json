@@ -1341,5 +1341,41 @@
             "type": "file",
             "path": "LICENSE"
         }
+    },
+    "ext-vio": {
+        "type": "git",
+        "url": "https://github.com/phpolygon/php-vio",
+        "rev": "main",
+        "license": {
+            "type": "file",
+            "path": "LICENSE"
+        }
+    },
+    "glslang": {
+        "type": "git",
+        "url": "https://github.com/KhronosGroup/glslang",
+        "rev": "16.2.0",
+        "license": {
+            "type": "file",
+            "path": "LICENSE"
+        }
+    },
+    "spirv-cross": {
+        "type": "git",
+        "url": "https://github.com/KhronosGroup/SPIRV-Cross",
+        "rev": "vulkan-sdk-1.4.313.0",
+        "license": {
+            "type": "file",
+            "path": "LICENSE"
+        }
+    },
+    "vulkan-headers": {
+        "type": "git",
+        "url": "https://github.com/KhronosGroup/Vulkan-Headers",
+        "rev": "main",
+        "license": {
+            "type": "file",
+            "path": "LICENSE"
+        }
     }
 }

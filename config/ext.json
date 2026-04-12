@@ -226,6 +226,29 @@
         ],
         "lib-depends-windows": []
     },
+    "vio": {
+        "support": {
+            "Windows": "wip",
+            "BSD": "no",
+            "Linux": "yes",
+            "Darwin": "yes"
+        },
+        "type": "external",
+        "arg-type": "custom",
+        "source": "ext-vio",
+        "lib-depends": [
+            "glfw",
+            "glslang",
+            "spirv-cross",
+            "vulkan-loader"
+        ],
+        "lib-depends-darwin": [
+            "glfw",
+            "glslang",
+            "spirv-cross",
+            "moltenvk"
+        ]
+    },
     "steamworks": {
         "support": {
             "Windows": "yes",

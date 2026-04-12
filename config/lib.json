@@ -1092,12 +1092,51 @@
     },
     "vulkan-loader": {
         "source": "vulkan-loader",
+        "lib-depends": [
+            "vulkan-headers"
+        ],
         "static-libs-macos": [
             "libvulkan.a"
         ],
         "static-libs-linux": [
             "libvulkan.a"
         ],
+        "headers": [
+            "vulkan"
+        ]
+    },
+    "glslang": {
+        "source": "glslang",
+        "static-libs-unix": [
+            "libglslang.a",
+            "libSPIRV.a",
+            "libglslang-default-resource-limits.a",
+            "libMachineIndependent.a",
+            "libGenericCodeGen.a",
+            "libOSDependent.a"
+        ],
+        "headers": [
+            "glslang"
+        ]
+    },
+    "spirv-cross": {
+        "source": "spirv-cross",
+        "static-libs-unix": [
+            "libspirv-cross-core.a",
+            "libspirv-cross-glsl.a",
+            "libspirv-cross-msl.a",
+            "libspirv-cross-hlsl.a",
+            "libspirv-cross-reflect.a",
+            "libspirv-cross-cpp.a",
+            "libspirv-cross-c.a"
+        ],
+        "headers": [
+            "spirv_cross"
+        ]
+    },
+    "vulkan-headers": {
+        "source": "vulkan-headers",
+        "static-libs-unix": [],
         "headers": [
             "vulkan"
         ]

@@ -1,0 +1,24 @@
+<?php
+
+declare(strict_types=1);
+
+namespace SPC\builder\macos\library;
+
+use SPC\util\executor\UnixCMakeExecutor;
+
+class spirv_cross extends MacOSLibraryBase
+{
+    public const NAME = 'spirv-cross';
+
+    protected function build(): void
+    {
+        UnixCMakeExecutor::create($this)
+            ->addConfigureArgs(
+                '-DSPIRV_CROSS_SHARED=OFF',
+                '-DSPIRV_CROSS_CLI=OFF',
+                '-DSPIRV_CROSS_ENABLE_TESTS=OFF',
+                '-DSPIRV_CROSS_STATIC=ON',
+            )
+            ->build('.');
+    }
+}
