@@ -30,6 +30,6 @@ class vulkan_loader extends LinuxLibraryBase
                 '-DBUILD_WSI_WAYLAND_SUPPORT=OFF',
                 '-DVULKAN_HEADERS_INSTALL_DIR=' . BUILD_ROOT_PATH,
             )
-            ->build('.');
+            ->build();
     }
 }

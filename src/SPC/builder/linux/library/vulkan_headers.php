@@ -14,6 +14,6 @@ class vulkan_headers extends LinuxLibraryBase
     {
         // Vulkan-Headers is a header-only package; CMake install copies headers into buildroot.
         UnixCMakeExecutor::create($this)
-            ->build('.');
+            ->build();
     }
 }

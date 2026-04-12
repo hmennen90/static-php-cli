@@ -19,6 +19,6 @@ class spirv_cross extends LinuxLibraryBase
                 '-DSPIRV_CROSS_ENABLE_TESTS=OFF',
                 '-DSPIRV_CROSS_STATIC=ON',
             )
-            ->build('.');
+            ->build();
     }
 }

@@ -1344,7 +1344,6 @@
             "vulkan-loader"
         ],
         "lib-depends-darwin": [
-            "vulkan-loader",
             "moltenvk"
         ],
         "lib-depends-windows": []

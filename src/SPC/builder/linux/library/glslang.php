@@ -19,6 +19,6 @@ class glslang extends LinuxLibraryBase
                 '-DBUILD_TESTING=OFF',
                 '-DBUILD_SHARED_LIBS=OFF',
             )
-            ->build('.');
+            ->build();
     }
 }
