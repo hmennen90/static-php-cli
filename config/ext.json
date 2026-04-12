@@ -220,7 +220,7 @@
         "lib-depends": [
             "glfw"
         ],
-        "lib-depends-darwin": [
+        "lib-depends-macos": [
             "glfw",
             "moltenvk"
         ],
@@ -242,12 +242,13 @@
             "spirv-cross",
             "vulkan-loader"
         ],
-        "lib-depends-darwin": [
+        "lib-depends-macos": [
             "glfw",
             "glslang",
             "spirv-cross",
             "moltenvk"
-        ]
+        ],
+        "lib-depends-windows": []
     },
     "steamworks": {
         "support": {
@@ -1343,7 +1344,7 @@
         "lib-depends": [
             "vulkan-loader"
         ],
-        "lib-depends-darwin": [
+        "lib-depends-macos": [
             "moltenvk"
         ],
         "lib-depends-windows": []
@@ -1359,7 +1360,7 @@
         "type": "external",
         "arg-type": "custom",
         "source": "ext-metal",
-        "lib-depends-darwin": [
+        "lib-depends-macos": [
             "moltenvk"
         ],
         "lib-depends-windows": [],
