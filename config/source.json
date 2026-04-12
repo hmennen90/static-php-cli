@@ -1345,7 +1345,7 @@
     "ext-vio": {
         "type": "git",
         "url": "https://github.com/phpolygon/php-vio",
-        "rev": "v1.2.0",
+        "rev": "1.2.0",
         "license": {
             "type": "file",
             "path": "LICENSE"
