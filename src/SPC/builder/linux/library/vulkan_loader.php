@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SPC\builder\linux\library;
 
+use SPC\store\FileSystem;
 use SPC\util\executor\UnixCMakeExecutor;
 
 class vulkan_loader extends LinuxLibraryBase
@@ -12,6 +13,14 @@ class vulkan_loader extends LinuxLibraryBase
 
     protected function build(): void
     {
+        // Vulkan-Loader only supports shared libraries on Linux by default.
+        // Patch CMakeLists.txt to build a static library instead.
+        FileSystem::replaceFileStr(
+            $this->source_dir . '/loader/CMakeLists.txt',
+            'add_library(vulkan SHARED)',
+            'add_library(vulkan STATIC)'
+        );
+
         // Symlink X11/XCB headers and libs into buildroot so cmake finds them
         foreach (['X11', 'xcb'] as $dir) {
             $src = "/usr/include/{$dir}";

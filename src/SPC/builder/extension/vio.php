@@ -25,6 +25,12 @@ class vio extends Extension
         // Fix library names in configure if needed
         FileSystem::replaceFileStr(SOURCE_PATH . '/php-src/configure', '-lglfw ', '-lglfw3 ');
 
+        // Fix missing string.h include for strdup in vio_shader_compiler.c (C23 requires explicit declarations)
+        $shaderCompiler = SOURCE_PATH . '/php-src/ext/vio/src/vio_shader_compiler.c';
+        if (file_exists($shaderCompiler) && !str_contains(file_get_contents($shaderCompiler), '#include <string.h>')) {
+            FileSystem::replaceFileStr($shaderCompiler, '#include "vio_shader_compiler.h"', "#include <string.h>\n#include \"vio_shader_compiler.h\"");
+        }
+
         $extraLibs = [];
         if (PHP_OS_FAMILY === 'Darwin') {
             $extraLibs[] = '-lc++';
