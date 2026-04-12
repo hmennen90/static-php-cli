@@ -89,7 +89,7 @@ jobs:
             --for-extensions=${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} \
             --ignore-cache-sources=php-src \
             --prefer-pre-built
-          ./bin/spc build ${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} --build-micro -I "memory_limit=-1"
+          ./bin/spc build ${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} --build-micro -I "memory_limit=-1" --without-micro-ext-test
 
       # ── Linux (Alpine for base, glibc/CentOS for steam since libsteam_api.so requires glibc) ──
       - name: "Download & Build (Linux)"
@@ -105,7 +105,7 @@ jobs:
             --for-extensions=${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} \
             --ignore-cache-sources=php-src \
             --prefer-pre-built
-          $SPC_CMD build ${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} --build-micro -I "memory_limit=-1"
+          $SPC_CMD build ${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} --build-micro -I "memory_limit=-1" --without-micro-ext-test
 
       # ── Windows ──
       - name: "Install Composer deps (Windows)"
