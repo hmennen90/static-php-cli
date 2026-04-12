@@ -13,11 +13,12 @@ class moltenvk extends MacOSLibraryBase
     protected function build(): void
     {
         // MoltenVK is distributed as pre-built binaries via GitHub Releases.
-        // The tarball contains: MoltenVK/MoltenVK/static/MoltenVK.xcframework/macos-arm64_x86_64/libMoltenVK.a
-        //                       MoltenVK/MoltenVK/include/MoltenVK/*.h
-        //                       MoltenVK/MoltenVK/include/vulkan/*.h
-        $xcfwBase = $this->source_dir . '/MoltenVK/MoltenVK/static/MoltenVK.xcframework/macos-arm64_x86_64';
-        $includeBase = $this->source_dir . '/MoltenVK/MoltenVK/include';
+        // After extraction with --strip-components 1, the layout is:
+        //   MoltenVK/static/MoltenVK.xcframework/macos-arm64_x86_64/libMoltenVK.a
+        //   MoltenVK/include/MoltenVK/*.h
+        //   MoltenVK/include/vulkan/*.h
+        $xcfwBase = $this->source_dir . '/MoltenVK/static/MoltenVK.xcframework/macos-arm64_x86_64';
+        $includeBase = $this->source_dir . '/MoltenVK/include';
 
         // Copy static library
         copy($xcfwBase . '/libMoltenVK.a', BUILD_LIB_PATH . '/libMoltenVK.a');
