@@ -38,7 +38,7 @@ class vio extends Extension
         $frag = SOURCE_PATH . '/php-src/ext/vio/Makefile.frag';
         if (file_exists($frag)) {
             $content = file_get_contents($frag);
-            $content = str_replace('-DHAVE_CONFIG_H', '-DHAVE_VULKAN=1', $content);
+            $content = str_replace('-DHAVE_CONFIG_H', '-DHAVE_VULKAN=1 -DHAVE_METAL=1', $content);
             file_put_contents($frag, $content);
         }
 
