@@ -70,6 +70,7 @@ class vulkan_loader extends LinuxLibraryBase
         }
 
         UnixCMakeExecutor::create($this)
+            ->appendEnv(['PKG_CONFIG_PATH' => BUILD_ROOT_PATH . '/lib/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig'])
             ->addConfigureArgs(
                 '-DBUILD_TESTS=OFF',
                 '-DBUILD_WSI_XCB_SUPPORT=OFF',

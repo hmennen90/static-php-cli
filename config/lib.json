@@ -1075,6 +1075,9 @@
     },
     "moltenvk": {
         "source": "moltenvk",
+        "lib-depends": [
+            "vulkan-headers"
+        ],
         "static-libs-macos": [
             "libMoltenVK.a"
         ],
