@@ -18,16 +18,42 @@ class vio extends Extension
         }
         FileSystem::copyDir(SOURCE_PATH . '/ext-vio', SOURCE_PATH . '/php-src/ext/vio');
 
-        // Stub out OpenGL backend — we use Vulkan/Metal, and the bundled GLAD has
-        // type mismatches (PFNGLTBUFFERMASK3DFXPROC etc.) that fail on CI compilers.
-        $stubComment = "/* OpenGL backend disabled for static Vulkan/Metal build */\n";
-        $gladC = SOURCE_PATH . '/php-src/ext/vio/vendor/glad/src/glad.c';
-        $openglC = SOURCE_PATH . '/php-src/ext/vio/src/backends/opengl/vio_opengl.c';
-        if (file_exists($gladC)) {
-            file_put_contents($gladC, $stubComment);
+        // Stub out vendored implementations that conflict with php-glfw
+        $emptyStubs = [
+            'vendor/glad/src/glad.c',
+            'vendor/stb/stb_image_impl.c',
+            'vendor/stb/stb_truetype_impl.c',
+            'vendor/stb/stb_image_write_impl.c',
+            'vendor/miniaudio/miniaudio_impl.c',
+        ];
+        foreach ($emptyStubs as $file) {
+            $path = SOURCE_PATH . '/php-src/ext/vio/' . $file;
+            if (file_exists($path)) {
+                file_put_contents($path, "/* stubbed — provided by php-glfw */\n");
+            }
         }
-        if (file_exists($openglC)) {
-            file_put_contents($openglC, $stubComment);
+
+        // Fix Makefile.frag — replace -DHAVE_CONFIG_H with -DHAVE_VULKAN=1
+        // since config.h doesn't exist at the expected path in static builds.
+        $frag = SOURCE_PATH . '/php-src/ext/vio/Makefile.frag';
+        if (file_exists($frag)) {
+            $content = file_get_contents($frag);
+            $content = str_replace('-DHAVE_CONFIG_H', '-DHAVE_VULKAN=1', $content);
+            file_put_contents($frag, $content);
+        }
+
+        // Replace OpenGL backend with no-op stubs (core VIO code references these symbols)
+        $openglStub = SOURCE_PATH . '/php-src/ext/vio/src/backends/opengl/vio_opengl.c';
+        if (file_exists($openglStub)) {
+            file_put_contents($openglStub, <<<'C'
+                /* OpenGL backend stub for static Vulkan/Metal builds */
+                #include "vio_opengl.h"
+                vio_opengl_state vio_gl = {0};
+                void vio_backend_opengl_register(void) { /* no-op */ }
+                void vio_opengl_setup_context(void) { /* no-op */ }
+                unsigned int vio_opengl_compile_shader_source(const char *v, const char *f) { (void)v; (void)f; return 0; }
+
+                C);
         }
 
         return true;
@@ -80,6 +106,63 @@ class vio extends Extension
             }
         }
         putenv('SPC_EXTRA_LIBS=' . trim($existing));
+
+        return true;
+    }
+
+    public function patchBeforeMake(): bool
+    {
+        $buildDir = SOURCE_PATH . '/php-src';
+        $vulkanInc = BUILD_ROOT_PATH . '/include';
+
+        // Compile VMA C++ wrapper — the Makefile.frag rule exists but shared_objects_vio
+        // isn't consumed by the micro SAPI target, so we compile it manually and add it.
+        $vmaWrapper = $buildDir . '/ext/vio/src/backends/vulkan/vio_vma_wrapper.cpp';
+        $vmaLo = 'ext/vio/src/backends/vulkan/vio_vma_wrapper.lo';
+        if (file_exists($vmaWrapper)) {
+            $vmaInc = $buildDir . '/ext/vio/vendor/vma';
+            $extInc = $buildDir . '/ext/vio/include';
+            @mkdir(dirname("{$buildDir}/{$vmaLo}"), 0755, true);
+
+            $cxx = PHP_OS_FAMILY === 'Darwin' ? 'c++' : 'g++';
+            shell()->cd($buildDir)->exec(
+                "/bin/sh {$buildDir}/libtool --silent --preserve-dup-deps --tag=CXX --mode=compile {$cxx} -std=c++14"
+                . " -I{$vmaInc} -I{$extInc} -I{$vulkanInc}"
+                . ' -DHAVE_VULKAN=1 -fPIC -O2'
+                . " -c {$vmaWrapper} -o {$vmaLo}"
+            );
+
+            // Add to PHP_MICRO_OBJS so make links it into micro.sfx
+            FileSystem::replaceFileStr(
+                "{$buildDir}/Makefile",
+                'PHP_MICRO_OBJS = ',
+                "PHP_MICRO_OBJS = {$vmaLo} "
+            );
+        }
+
+        // Compile Metal backend on macOS
+        if (PHP_OS_FAMILY === 'Darwin') {
+            $metalSrc = $buildDir . '/ext/vio/src/backends/metal/vio_metal.m';
+            $metalLo = 'ext/vio/src/backends/metal/vio_metal.lo';
+            if (file_exists($metalSrc)) {
+                $extInc = $buildDir . '/ext/vio/include';
+                @mkdir(dirname("{$buildDir}/{$metalLo}"), 0755, true);
+
+                shell()->cd($buildDir)->exec(
+                    "/bin/sh {$buildDir}/libtool --silent --preserve-dup-deps --tag=CC --mode=compile cc"
+                    . ' -x objective-c -fobjc-arc'
+                    . " -I{$extInc} -I{$vulkanInc} -I{$buildDir} -I{$buildDir}/main"
+                    . ' -DHAVE_VULKAN=1 -DHAVE_METAL=1 -fPIC -O2'
+                    . " -c {$metalSrc} -o {$metalLo}"
+                );
+
+                FileSystem::replaceFileStr(
+                    "{$buildDir}/Makefile",
+                    'PHP_MICRO_OBJS = ',
+                    "PHP_MICRO_OBJS = {$metalLo} "
+                );
+            }
+        }
 
         return true;
     }

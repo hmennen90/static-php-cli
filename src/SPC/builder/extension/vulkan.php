@@ -17,6 +17,24 @@ class vulkan extends Extension
             return false;
         }
         FileSystem::copyDir(SOURCE_PATH . '/ext-vulkan', SOURCE_PATH . '/php-src/ext/vulkan');
+
+        // PHP's genif.sh scans ext/<name>/*.h* for "phpext_" to generate
+        // internal_functions_cli.c includes. The vulkan extension puts its header
+        // in src/php_vulkan.h which genif.sh can't find. Create a wrapper at
+        // the expected location that includes the real header AND contains the
+        // phpext_ symbol so genif.sh picks it up.
+        $wrapperHeader = SOURCE_PATH . '/php-src/ext/vulkan/php_vulkan.h';
+        if (!file_exists($wrapperHeader)) {
+            file_put_contents($wrapperHeader, <<<'H'
+                #ifndef PHP_VULKAN_WRAPPER_H
+                #define PHP_VULKAN_WRAPPER_H
+                #include "src/php_vulkan.h"
+                /* phpext_vulkan_ptr is defined in src/php_vulkan.h — this comment
+                   ensures genif.sh detects this header via its phpext_ grep. */
+                #endif
+                H . "\n");
+        }
+
         return true;
     }
 
