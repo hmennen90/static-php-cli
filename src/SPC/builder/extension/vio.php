@@ -154,7 +154,7 @@ class vio extends Extension
                     "/bin/sh {$buildDir}/libtool --silent --preserve-dup-deps --tag=CC --mode=compile cc"
                     . ' -x objective-c -fobjc-arc'
                     . " -I{$extInc} -I{$vulkanInc} {$phpIncludes}"
-                    . ' -DHAVE_VULKAN=1 -DHAVE_METAL=1 -DHAVE_CONFIG_H -fPIC -O2'
+                    . ' -DHAVE_VULKAN=1 -DHAVE_METAL=1 -fPIC -O2'
                     . " -c {$metalSrc} -o {$metalLo}"
                 );
 
