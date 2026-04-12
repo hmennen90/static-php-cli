@@ -19,6 +19,12 @@ class decimal extends Extension
             'zend_module_entry decimal_module_entry',
             'zend_module_entry php_decimal_module_entry'
         );
+        FileSystem::replaceFileStr(
+            $this->source_dir . '/config.w32',
+            'ARG_WITH("decimal", "for decimal support", "no");',
+            'ARG_WITH("decimal", "for decimal support",  "no");' . "\n" .
+            'ADD_EXTENSION_DEP("decimal", "json");'
+        );
         return true;
     }
 

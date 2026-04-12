@@ -29,13 +29,5 @@ class libmpdec extends WindowsLibraryBase
             }
         }
         copy($makefile_dir . '\mpdecimal.h', BUILD_INCLUDE_PATH . '\mpdecimal.h');
-
-        // Disable dllimport for static linking: the header defaults to
-        // __declspec(dllimport) when _DLL is defined, idk if php builds with /MD
-        FileSystem::replaceFileStr(
-            BUILD_INCLUDE_PATH . '\mpdecimal.h',
-            '#elif defined(_DLL)',
-            '#elif 0'
-        );
     }
 }
