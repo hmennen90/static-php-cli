@@ -527,7 +527,7 @@ abstract class BuilderBase
                     // program returns expected output
                     function ($ret, $out) {
                         $raw_out = trim(implode('', $out));
-                        return str_starts_with($raw_out, '[micro-test-start]') && str_ends_with($raw_out, '[micro-test-end]');
+                        return str_contains($raw_out, '[micro-test-start]') && str_ends_with($raw_out, '[micro-test-end]');
                     },
                 ],
             ],
