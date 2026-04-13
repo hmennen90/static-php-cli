@@ -1339,7 +1339,7 @@
         "rev": "main",
         "license": {
             "type": "file",
-            "path": "LICENSE"
+            "path": "LICENSE.txt"
         }
     },
     "ext-vio": {
