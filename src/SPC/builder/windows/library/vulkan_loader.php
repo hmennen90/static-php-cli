@@ -12,6 +12,14 @@ class vulkan_loader extends WindowsLibraryBase
 
     protected function build(): void
     {
+        // Vulkan-Loader hardcodes SHARED in its CMakeLists.txt — patch to STATIC
+        $loaderCmake = $this->source_dir . '\loader\CMakeLists.txt';
+        $content = file_get_contents($loaderCmake);
+        $content = str_replace('add_library(vulkan SHARED)', 'add_library(vulkan STATIC)', $content);
+        // Remove install(EXPORT) which fails with static builds
+        $content = preg_replace('/install\(EXPORT\s+VulkanLoaderConfig[^)]*\)/', '# static: export removed', $content);
+        file_put_contents($loaderCmake, $content);
+
         FileSystem::resetDir($this->source_dir . '\build');
 
         cmd()->cd($this->source_dir)
@@ -28,7 +36,16 @@ class vulkan_loader extends WindowsLibraryBase
             )
             ->execWithWrapper(
                 $this->builder->makeSimpleWrapper('cmake'),
-                "--build build --config Release --target install -j{$this->builder->concurrency}"
+                "--build build --config Release -j{$this->builder->concurrency}"
             );
+
+        // Manually install — cmake install fails with STATIC due to export set issues
+        FileSystem::createDir(BUILD_LIB_PATH);
+        $libSrc = $this->source_dir . '\build\loader\Release\vulkan-1.lib';
+        if (!file_exists($libSrc)) {
+            // Fallback: some cmake versions put it without Release subdir
+            $libSrc = $this->source_dir . '\build\loader\vulkan-1.lib';
+        }
+        copy($libSrc, BUILD_LIB_PATH . '\vulkan-1.lib');
     }
 }

@@ -226,8 +226,9 @@ class vio extends Extension
             );
 
         // Add VMA obj to SPC_EXTRA_LIBS so it gets passed to LIBS_MICRO in the nmake wrapper
+        // No quotes around the path — it gets embedded inside LIBS_MICRO="..." in the wrapper
         $existing = getenv('SPC_EXTRA_LIBS') ?: '';
-        putenv('SPC_EXTRA_LIBS=' . trim($existing . ' "' . $vmaObj . '"'));
+        putenv('SPC_EXTRA_LIBS=' . trim($existing . ' ' . $vmaObj));
 
         return true;
     }
