@@ -117,13 +117,12 @@ class vio extends Extension
 
     public function patchBeforeMake(): bool
     {
-        // On Windows, C++ files are compiled by nmake via config.w32 — skip manual compilation
-        if (PHP_OS_FAMILY === 'Windows') {
-            return false;
-        }
-
         $buildDir = SOURCE_PATH . '/php-src';
         $vulkanInc = BUILD_ROOT_PATH . '/include';
+
+        if (PHP_OS_FAMILY === 'Windows') {
+            return $this->patchBeforeMakeWindows($buildDir, $vulkanInc);
+        }
 
         // Compile VMA C++ wrapper — the Makefile.frag rule exists but shared_objects_vio
         // isn't consumed by the micro SAPI target, so we compile it manually and add it.
@@ -197,5 +196,39 @@ class vio extends Extension
     public function getWindowsConfigureArg(bool $shared = false): string
     {
         return '--enable-vio=static';
+    }
+
+    /**
+     * Compile VMA C++ wrapper on Windows and inject the .obj into the micro link step.
+     */
+    private function patchBeforeMakeWindows(string $buildDir, string $vulkanInc): bool
+    {
+        $vmaWrapper = $buildDir . '\ext\vio\src\backends\vulkan\vio_vma_wrapper.cpp';
+        if (!file_exists($vmaWrapper)) {
+            return false;
+        }
+
+        $vmaInc = $buildDir . '\ext\vio\vendor\vma';
+        $extInc = $buildDir . '\ext\vio\include';
+        $phpIncludes = "/I\"{$buildDir}\" /I\"{$buildDir}\\main\" /I\"{$buildDir}\\Zend\" /I\"{$buildDir}\\TSRM\"";
+        $outDir = $buildDir . '\x64\Release';
+        $vmaObj = $outDir . '\vio_vma_wrapper.obj';
+
+        // Compile VMA wrapper using cl.exe via the SDK environment
+        /** @var \SPC\builder\windows\WindowsBuilder $builder */
+        $builder = $this->builder;
+        cmd()->cd($buildDir)
+            ->execWithWrapper(
+                $builder->makeSimpleWrapper('cl.exe'),
+                '/c /std:c++14 /EHsc /MT /O2 /DHAVE_VULKAN=1 '
+                . "/I\"{$vmaInc}\" /I\"{$extInc}\" /I\"{$vulkanInc}\" {$phpIncludes} "
+                . "/Fo\"{$vmaObj}\" \"{$vmaWrapper}\""
+            );
+
+        // Add VMA obj to SPC_EXTRA_LIBS so it gets passed to LIBS_MICRO in the nmake wrapper
+        $existing = getenv('SPC_EXTRA_LIBS') ?: '';
+        putenv('SPC_EXTRA_LIBS=' . trim($existing . ' "' . $vmaObj . '"'));
+
+        return true;
     }
 }
