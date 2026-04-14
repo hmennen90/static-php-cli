@@ -29,27 +29,17 @@ class vulkan_loader extends WindowsLibraryBase
         file_put_contents($loaderCmake, $content);
 
         // Remove DllMain from loader_windows.c — it conflicts with PHP's own DllMain.
-        // Replace it with a no-op init function that can be called manually.
+        // Use regex to handle both \n and \r\n line endings.
         $loaderWin = $this->source_dir . '\loader\loader_windows.c';
         if (file_exists($loaderWin)) {
             $winContent = file_get_contents($loaderWin);
-            $winContent = str_replace(
-                'BOOL WINAPI DllMain(HINSTANCE hinst, DWORD reason, LPVOID reserved) {',
-                "/* DllMain removed for static build — init moved to loader_static_init() */\n"
-                . "void loader_static_init(void) {\n"
-                . "    loader_platform_thread_create_mutex(&loader_lock);\n"
-                . "    loader_platform_thread_create_mutex(&loader_preload_icd_lock);\n"
-                . "    init_global_loader_settings();\n"
-                . "}\n\n"
-                . '#if 0 /* disabled for static build */' . "\n"
-                . 'BOOL WINAPI DllMain(HINSTANCE hinst, DWORD reason, LPVOID reserved) {',
-                $winContent
-            );
-            // Close the #if 0 after the end of DllMain
-            $winContent = str_replace(
-                "    return TRUE;\n}\n",
-                "    return TRUE;\n}\n#endif\n",
-                $winContent
+            // Match: BOOL WINAPI DllMain(...) { ... return TRUE;\n}
+            // The closing } is at column 0, preceded by "return TRUE;"
+            $winContent = preg_replace(
+                '/(BOOL WINAPI DllMain\(.*?return TRUE;\s*\r?\n\})/s',
+                "/* DllMain removed for static build */\n#if 0\n$1\n#endif\n",
+                $winContent,
+                1
             );
             file_put_contents($loaderWin, $winContent);
         }
