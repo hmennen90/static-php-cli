@@ -28,23 +28,28 @@ class vulkan_loader extends WindowsLibraryBase
         $content = preg_replace('/install\(EXPORT\s+VulkanLoaderConfig[^)]*\)/', '# static: export removed', $content);
         file_put_contents($loaderCmake, $content);
 
-        // Remove DllMain from loader_windows.c — it conflicts with PHP's own DllMain
+        // Remove DllMain from loader_windows.c — it conflicts with PHP's own DllMain.
+        // Replace it with a no-op init function that can be called manually.
         $loaderWin = $this->source_dir . '\loader\loader_windows.c';
         if (file_exists($loaderWin)) {
             $winContent = file_get_contents($loaderWin);
-            // Wrap DllMain in #ifndef to disable it for static builds
             $winContent = str_replace(
                 'BOOL WINAPI DllMain(HINSTANCE hinst, DWORD reason, LPVOID reserved) {',
-                '#ifndef VULKAN_STATIC_BUILD' . "\n" . 'BOOL WINAPI DllMain(HINSTANCE hinst, DWORD reason, LPVOID reserved) {',
+                "/* DllMain removed for static build — init moved to loader_static_init() */\n"
+                . "void loader_static_init(void) {\n"
+                . "    loader_platform_thread_create_mutex(&loader_lock);\n"
+                . "    loader_platform_thread_create_mutex(&loader_preload_icd_lock);\n"
+                . "    init_global_loader_settings();\n"
+                . "}\n\n"
+                . '#if 0 /* disabled for static build */' . "\n"
+                . 'BOOL WINAPI DllMain(HINSTANCE hinst, DWORD reason, LPVOID reserved) {',
                 $winContent
             );
-            // Find the closing brace of DllMain and add #endif
-            // DllMain ends with "return TRUE;\n}"
-            $winContent = preg_replace(
-                '/(return TRUE;\s*\n\})([\s]*(?:\/\/[^\n]*)?\s*\n)/',
-                "$1\n#endif /* VULKAN_STATIC_BUILD */\n",
-                $winContent,
-                1
+            // Close the #if 0 after the end of DllMain
+            $winContent = str_replace(
+                "    return TRUE;\n}\n",
+                "    return TRUE;\n}\n#endif\n",
+                $winContent
             );
             file_put_contents($loaderWin, $winContent);
         }
@@ -60,7 +65,6 @@ class vulkan_loader extends WindowsLibraryBase
                 '-DCMAKE_BUILD_TYPE=Release ' .
                 '-DBUILD_TESTS=OFF ' .
                 '-DBUILD_SHARED_LIBS=OFF ' .
-                '-DCMAKE_C_FLAGS="/DVULKAN_STATIC_BUILD" ' .
                 '-DVULKAN_HEADERS_INSTALL_DIR=' . BUILD_ROOT_PATH . ' ' .
                 '-DCMAKE_INSTALL_PREFIX=' . BUILD_ROOT_PATH . ' '
             )
