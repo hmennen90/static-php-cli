@@ -41,18 +41,10 @@ class vulkan extends Extension
     public function patchBeforeConfigure(): bool
     {
         // Fix library names in configure (-lglfw -> -lglfw3) — Unix only
-        if (PHP_OS_FAMILY !== 'Windows') {
-            FileSystem::replaceFileStr(SOURCE_PATH . '/php-src/configure', '-lglfw ', '-lglfw3 ');
-        }
+        FileSystem::replaceFileStr(SOURCE_PATH . '/php-src/configure', '-lglfw ', '-lglfw3 ');
 
         $extraLibs = [];
-        if (PHP_OS_FAMILY === 'Windows') {
-            // Static vulkan-loader and its dependencies — config.w32 CHECK_LIB may
-            // not find them due to path casing, so inject them explicitly.
-            $extraLibs[] = 'vulkan-1.lib';
-            $extraLibs[] = 'cfgmgr32.lib';
-            $extraLibs[] = 'advapi32.lib';
-        } elseif (PHP_OS_FAMILY === 'Darwin') {
+        if (PHP_OS_FAMILY === 'Darwin') {
             $extraLibs[] = '-lc++';
         } elseif (PHP_OS_FAMILY === 'Linux') {
             $extraLibs[] = '-lstdc++';
@@ -62,6 +54,23 @@ class vulkan extends Extension
                 '-lXext', '-lXfixes', '-lXrender', '-lxcb', '-lXau', '-lXdmcp',
             ]);
         }
+
+        $existing = getenv('SPC_EXTRA_LIBS') ?: '';
+        foreach ($extraLibs as $lib) {
+            if (!str_contains($existing, $lib)) {
+                $existing .= ' ' . $lib;
+            }
+        }
+        putenv('SPC_EXTRA_LIBS=' . trim($existing));
+
+        return true;
+    }
+
+    public function patchBeforeWindowsConfigure(): bool
+    {
+        // Static vulkan-loader and its dependencies — inject explicitly since
+        // config.w32 CHECK_LIB may not find them due to path casing.
+        $extraLibs = ['vulkan-1.lib', 'cfgmgr32.lib', 'advapi32.lib'];
 
         $existing = getenv('SPC_EXTRA_LIBS') ?: '';
         foreach ($extraLibs as $lib) {
