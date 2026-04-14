@@ -66,8 +66,10 @@ class vio extends Extension
 
     public function patchBeforeConfigure(): bool
     {
-        // Fix library names in configure if needed
-        FileSystem::replaceFileStr(SOURCE_PATH . '/php-src/configure', '-lglfw ', '-lglfw3 ');
+        // Fix library names in configure if needed — Unix only
+        if (PHP_OS_FAMILY !== 'Windows') {
+            FileSystem::replaceFileStr(SOURCE_PATH . '/php-src/configure', '-lglfw ', '-lglfw3 ');
+        }
 
         // Fix strdup declaration in vio_shader_compiler.c — C23 requires explicit declarations.
         // strdup is POSIX, not standard C. Prepend feature macros and explicit declaration.

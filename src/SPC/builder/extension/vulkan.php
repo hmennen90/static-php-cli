@@ -40,8 +40,10 @@ class vulkan extends Extension
 
     public function patchBeforeConfigure(): bool
     {
-        // Fix library names in configure (-lglfw -> -lglfw3)
-        FileSystem::replaceFileStr(SOURCE_PATH . '/php-src/configure', '-lglfw ', '-lglfw3 ');
+        // Fix library names in configure (-lglfw -> -lglfw3) — Unix only
+        if (PHP_OS_FAMILY !== 'Windows') {
+            FileSystem::replaceFileStr(SOURCE_PATH . '/php-src/configure', '-lglfw ', '-lglfw3 ');
+        }
 
         $extraLibs = [];
         if (PHP_OS_FAMILY === 'Windows') {

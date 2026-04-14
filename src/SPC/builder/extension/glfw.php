@@ -22,7 +22,10 @@ class glfw extends Extension
 
     public function patchBeforeConfigure(): bool
     {
-        FileSystem::replaceFileStr(SOURCE_PATH . '/php-src/configure', '-lglfw ', '-lglfw3 ');
+        // Fix library names in configure — Unix only (Windows uses config.w32)
+        if (PHP_OS_FAMILY !== 'Windows') {
+            FileSystem::replaceFileStr(SOURCE_PATH . '/php-src/configure', '-lglfw ', '-lglfw3 ');
+        }
 
         // ogt_vox_c_wrapper.cpp requires the C++ standard library
         $extraLibs = [];
