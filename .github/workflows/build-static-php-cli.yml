@@ -40,7 +40,7 @@ jobs:
           - name: windows-x86_64
             runner: windows-latest
             platform: windows
-            gpu_extensions: ""
+            gpu_extensions: ",vio,vulkan"
         variant:
           - name: base
             extensions: "glfw,mbstring,zip,phar"

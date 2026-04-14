@@ -112,6 +112,11 @@ class vio extends Extension
 
     public function patchBeforeMake(): bool
     {
+        // On Windows, C++ files are compiled by nmake via config.w32 — skip manual compilation
+        if (PHP_OS_FAMILY === 'Windows') {
+            return false;
+        }
+
         $buildDir = SOURCE_PATH . '/php-src';
         $vulkanInc = BUILD_ROOT_PATH . '/include';
 

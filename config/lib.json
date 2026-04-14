@@ -184,6 +184,9 @@
         "static-libs-linux": [
             "libglfw3.a"
         ],
+        "static-libs-windows": [
+            "glfw3.lib"
+        ],
         "headers": [
             "GLFW"
         ]
@@ -1104,6 +1107,9 @@
         "static-libs-linux": [
             "libvulkan.a"
         ],
+        "static-libs-windows": [
+            "vulkan-1.lib"
+        ],
         "headers": [
             "vulkan"
         ]
@@ -1117,6 +1123,14 @@
             "libMachineIndependent.a",
             "libGenericCodeGen.a",
             "libOSDependent.a"
+        ],
+        "static-libs-windows": [
+            "glslang.lib",
+            "SPIRV.lib",
+            "glslang-default-resource-limits.lib",
+            "MachineIndependent.lib",
+            "GenericCodeGen.lib",
+            "OSDependentWin.lib"
         ],
         "headers": [
             "glslang"
@@ -1132,6 +1146,15 @@
             "libspirv-cross-reflect.a",
             "libspirv-cross-cpp.a",
             "libspirv-cross-c.a"
+        ],
+        "static-libs-windows": [
+            "spirv-cross-core.lib",
+            "spirv-cross-glsl.lib",
+            "spirv-cross-msl.lib",
+            "spirv-cross-hlsl.lib",
+            "spirv-cross-reflect.lib",
+            "spirv-cross-cpp.lib",
+            "spirv-cross-c.lib"
         ],
         "headers": [
             "spirv_cross"

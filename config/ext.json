@@ -228,7 +228,7 @@
     },
     "vio": {
         "support": {
-            "Windows": "wip",
+            "Windows": "yes",
             "BSD": "no",
             "Linux": "yes",
             "Darwin": "yes"
@@ -248,7 +248,12 @@
             "spirv-cross",
             "moltenvk"
         ],
-        "lib-depends-windows": []
+        "lib-depends-windows": [
+            "glfw",
+            "glslang",
+            "spirv-cross",
+            "vulkan-loader"
+        ]
     },
     "steamworks": {
         "support": {
@@ -1332,7 +1337,7 @@
     },
     "vulkan": {
         "support": {
-            "Windows": "wip",
+            "Windows": "yes",
             "BSD": "no",
             "Linux": "yes",
             "Darwin": "yes"
@@ -1347,7 +1352,9 @@
         "lib-depends-macos": [
             "moltenvk"
         ],
-        "lib-depends-windows": []
+        "lib-depends-windows": [
+            "vulkan-loader"
+        ]
     },
     "metal": {
         "support": {
