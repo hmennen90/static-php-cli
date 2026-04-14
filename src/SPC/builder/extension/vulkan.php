@@ -45,8 +45,11 @@ class vulkan extends Extension
 
         $extraLibs = [];
         if (PHP_OS_FAMILY === 'Windows') {
-            // Static vulkan-loader needs cfgmgr32 (Windows Device Manager API)
+            // Static vulkan-loader and its dependencies — config.w32 CHECK_LIB may
+            // not find them due to path casing, so inject them explicitly.
+            $extraLibs[] = 'vulkan-1.lib';
             $extraLibs[] = 'cfgmgr32.lib';
+            $extraLibs[] = 'advapi32.lib';
         } elseif (PHP_OS_FAMILY === 'Darwin') {
             $extraLibs[] = '-lc++';
         } elseif (PHP_OS_FAMILY === 'Linux') {
