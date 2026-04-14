@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SPC\builder\windows\library;
 
+use SPC\exception\BuildFailureException;
 use SPC\store\FileSystem;
 
 class vulkan_loader extends WindowsLibraryBase
@@ -12,10 +13,17 @@ class vulkan_loader extends WindowsLibraryBase
 
     protected function build(): void
     {
-        // Vulkan-Loader hardcodes SHARED in its CMakeLists.txt — patch to STATIC
+        // Vulkan-Loader hardcodes SHARED in its CMakeLists.txt for WIN32.
+        // Replace with STATIC and remove the .def/.rc files (not needed for static).
         $loaderCmake = $this->source_dir . '\loader\CMakeLists.txt';
         $content = file_get_contents($loaderCmake);
-        $content = str_replace('add_library(vulkan SHARED)', 'add_library(vulkan STATIC)', $content);
+
+        $content = preg_replace(
+            '/add_library\(vulkan\s+SHARED\s+\$\{NORMAL_LOADER_SRCS\}\s+\$\{CMAKE_CURRENT_SOURCE_DIR\}\/\$\{API_TYPE\}-1\.def\s+\$\{RC_FILE_LOCATION\}\)/',
+            'add_library(vulkan STATIC ${NORMAL_LOADER_SRCS})',
+            $content
+        );
+
         // Remove install(EXPORT) which fails with static builds
         $content = preg_replace('/install\(EXPORT\s+VulkanLoaderConfig[^)]*\)/', '# static: export removed', $content);
         file_put_contents($loaderCmake, $content);
@@ -39,13 +47,26 @@ class vulkan_loader extends WindowsLibraryBase
                 "--build build --config Release -j{$this->builder->concurrency}"
             );
 
-        // Manually install — cmake install fails with STATIC due to export set issues
+        // Manually install the static library
         FileSystem::createDir(BUILD_LIB_PATH);
-        $libSrc = $this->source_dir . '\build\loader\Release\vulkan-1.lib';
-        if (!file_exists($libSrc)) {
-            // Fallback: some cmake versions put it without Release subdir
-            $libSrc = $this->source_dir . '\build\loader\vulkan-1.lib';
+
+        // Find the built .lib — name depends on OUTPUT_NAME property
+        $candidates = [
+            $this->source_dir . '\build\loader\Release\vulkan-1.lib',
+            $this->source_dir . '\build\loader\Release\vulkan.lib',
+            $this->source_dir . '\build\loader\vulkan-1.lib',
+            $this->source_dir . '\build\loader\vulkan.lib',
+        ];
+        $found = false;
+        foreach ($candidates as $libSrc) {
+            if (file_exists($libSrc)) {
+                copy($libSrc, BUILD_LIB_PATH . '\vulkan-1.lib');
+                $found = true;
+                break;
+            }
         }
-        copy($libSrc, BUILD_LIB_PATH . '\vulkan-1.lib');
+        if (!$found) {
+            throw new BuildFailureException('Cannot find built vulkan loader static library');
+        }
     }
 }

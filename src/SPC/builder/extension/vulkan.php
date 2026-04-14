@@ -44,7 +44,10 @@ class vulkan extends Extension
         FileSystem::replaceFileStr(SOURCE_PATH . '/php-src/configure', '-lglfw ', '-lglfw3 ');
 
         $extraLibs = [];
-        if (PHP_OS_FAMILY === 'Darwin') {
+        if (PHP_OS_FAMILY === 'Windows') {
+            // Static vulkan-loader needs cfgmgr32 (Windows Device Manager API)
+            $extraLibs[] = 'cfgmgr32.lib';
+        } elseif (PHP_OS_FAMILY === 'Darwin') {
             $extraLibs[] = '-lc++';
         } elseif (PHP_OS_FAMILY === 'Linux') {
             $extraLibs[] = '-lstdc++';
