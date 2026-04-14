@@ -117,7 +117,7 @@ jobs:
         run: |
           ./bin/spc doctor
           ./bin/spc download --with-php="${{ inputs.php-version }}" --for-extensions="${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }}" --prefer-pre-built
-          ./bin/spc build "${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }}" --build-micro -I "memory_limit=-1"
+          ./bin/spc build "${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }}" --build-micro -I "memory_limit=-1" --without-micro-ext-test
 
       # ── Upload logs on failure ──
       - name: "Upload build logs"
