@@ -18,18 +18,23 @@ class vio extends Extension
         }
         FileSystem::copyDir(SOURCE_PATH . '/ext-vio', SOURCE_PATH . '/php-src/ext/vio');
 
-        // Stub out vendored implementations that conflict with php-glfw
-        $emptyStubs = [
-            'vendor/glad/src/glad.c',
-            'vendor/stb/stb_image_impl.c',
-            'vendor/stb/stb_truetype_impl.c',
-            'vendor/stb/stb_image_write_impl.c',
-            'vendor/miniaudio/miniaudio_impl.c',
-        ];
-        foreach ($emptyStubs as $file) {
-            $path = SOURCE_PATH . '/php-src/ext/vio/' . $file;
-            if (file_exists($path)) {
-                file_put_contents($path, "/* stubbed — provided by php-glfw */\n");
+        // On Unix, stub out vendored implementations that conflict with php-glfw
+        // (php-glfw provides these symbols via its own compiled sources).
+        // On Windows, keep them — config.w32 compiles vio's vendors directly
+        // and glfw's config.w32 does NOT export stb/miniaudio symbols.
+        if (PHP_OS_FAMILY !== 'Windows') {
+            $emptyStubs = [
+                'vendor/glad/src/glad.c',
+                'vendor/stb/stb_image_impl.c',
+                'vendor/stb/stb_truetype_impl.c',
+                'vendor/stb/stb_image_write_impl.c',
+                'vendor/miniaudio/miniaudio_impl.c',
+            ];
+            foreach ($emptyStubs as $file) {
+                $path = SOURCE_PATH . '/php-src/ext/vio/' . $file;
+                if (file_exists($path)) {
+                    file_put_contents($path, "/* stubbed — provided by php-glfw */\n");
+                }
             }
         }
 
