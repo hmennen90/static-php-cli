@@ -18,16 +18,31 @@ class vio extends Extension
         }
         FileSystem::copyDir(SOURCE_PATH . '/ext-vio', SOURCE_PATH . '/php-src/ext/vio');
 
-        // Remove vio's bundled GLAD to avoid duplicate symbols with php-glfw's GLAD
+        // Remove vio's bundled vendor libs that duplicate php-glfw's (glad, stb, miniaudio)
+        // Both config.m4 and config.w32 list these; removing prevents LNK2005 on Windows
+        // and potential issues on Unix.
         $configM4 = SOURCE_PATH . '/php-src/ext/vio/config.m4';
         if (file_exists($configM4)) {
-            FileSystem::replaceFileStr($configM4, "vendor/glad/src/glad.c \\\n    ", '');
+            // Replace the entire vendor source block with just a comma to end the source list
+            FileSystem::replaceFileStr(
+                $configM4,
+                "vendor/glad/src/glad.c \\\n" .
+                "    vendor/stb/stb_image_impl.c \\\n" .
+                "    vendor/stb/stb_truetype_impl.c \\\n" .
+                "    vendor/stb/stb_image_write_impl.c \\\n" .
+                "    vendor/miniaudio/miniaudio_impl.c,",
+                ','  // just the comma that ends the PHP_NEW_EXTENSION source list
+            );
         }
         $configW32 = SOURCE_PATH . '/php-src/ext/vio/config.w32';
         if (file_exists($configW32)) {
             $w32content = file_get_contents($configW32);
-            // Remove the glad.c source line (avoids duplicate symbols with glfw's GLAD)
-            $w32content = preg_replace('/\s*"vendor\\\\\\\\glad\\\\\\\\src\\\\\\\\glad\.c " \+/', '', $w32content);
+            // Remove all vendor source lines (glad, stb_*, miniaudio)
+            $w32content = preg_replace(
+                '/\s*"vendor\\\\\\\\(?:glad\\\\\\\\src\\\\\\\\glad|stb\\\\\\\\stb_\w+|miniaudio\\\\\\\\miniaudio_impl)\.c " \+/m',
+                '',
+                $w32content
+            );
             file_put_contents($configW32, $w32content);
         }
 
@@ -99,15 +114,20 @@ class vio extends Extension
 
         $content = file_get_contents($makefile);
 
-        // The generated Makefile compile rule looks like:
-        //   $(LIBTOOL) ... clang ... -c $(srcdir)/ext/vio/.../vio_metal.c -o .../vio_metal.lo
-        // We need -x objective-c BEFORE the source file for clang to treat it as ObjC.
-        // Insert the flags right before the -c flag on the vio_metal compile line.
+        // The Makefile may have duplicate rules for vio_metal.lo (one explicit,
+        // one from a pattern). Remove all generated compile rules for vio_metal.lo
+        // and replace with a single custom rule that uses -x objective-c.
+        // First, remove any existing compile rules for this target.
         $content = preg_replace(
-            '/([\t ]+.*)(-c\s+\S*ext\/vio\/src\/backends\/metal\/vio_metal\.c)/',
-            '$1-x objective-c -fobjc-arc $2',
+            '/^ext\/vio\/src\/backends\/metal\/vio_metal\.lo:.*\n(?:\t.*\n)*/m',
+            '',
             $content
         );
+
+        // Add a single custom compile rule at the end of the Makefile
+        $content .= "\n# Custom ObjC compile rule for Metal backend\n";
+        $content .= "ext/vio/src/backends/metal/vio_metal.lo: \$(srcdir)/ext/vio/src/backends/metal/vio_metal.c\n";
+        $content .= "\t\$(LIBTOOL) --silent --preserve-dup-deps --tag=CC --mode=compile \$(CC) \$(CFLAGS) \$(CFLAGS_CLEAN) \$(EXTRA_CFLAGS) -x objective-c -fobjc-arc -c \$< -o \$@ -MMD -MF ext/vio/src/backends/metal/vio_metal.dep -MT \$@\n";
 
         file_put_contents($makefile, $content);
         return true;
