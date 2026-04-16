@@ -17,93 +17,26 @@ class vio extends Extension
             return false;
         }
         FileSystem::copyDir(SOURCE_PATH . '/ext-vio', SOURCE_PATH . '/php-src/ext/vio');
-
-        // On Unix, stub out vendored implementations that conflict with php-glfw
-        // (php-glfw provides these symbols via its own compiled sources).
-        // On Windows, keep them — config.w32 compiles vio's vendors directly
-        // and glfw's config.w32 does NOT export stb/miniaudio symbols.
-        if (PHP_OS_FAMILY !== 'Windows') {
-            $emptyStubs = [
-                'vendor/glad/src/glad.c',
-                'vendor/stb/stb_image_impl.c',
-                'vendor/stb/stb_truetype_impl.c',
-                'vendor/stb/stb_image_write_impl.c',
-                'vendor/miniaudio/miniaudio_impl.c',
-            ];
-            foreach ($emptyStubs as $file) {
-                $path = SOURCE_PATH . '/php-src/ext/vio/' . $file;
-                if (file_exists($path)) {
-                    file_put_contents($path, "/* stubbed — provided by php-glfw */\n");
-                }
-            }
-        }
-
-        // Fix Makefile.frag — replace -DHAVE_CONFIG_H with -DHAVE_VULKAN=1
-        // since config.h doesn't exist at the expected path in static builds.
-        $frag = SOURCE_PATH . '/php-src/ext/vio/Makefile.frag';
-        if (file_exists($frag)) {
-            $content = file_get_contents($frag);
-            $content = str_replace('-DHAVE_CONFIG_H', '-DHAVE_VULKAN=1 -DHAVE_METAL=1', $content);
-            file_put_contents($frag, $content);
-        }
-
-        // Replace OpenGL backend with no-op stubs (core VIO code references these symbols)
-        $openglStub = SOURCE_PATH . '/php-src/ext/vio/src/backends/opengl/vio_opengl.c';
-        if (file_exists($openglStub)) {
-            file_put_contents($openglStub, <<<'C'
-                /* OpenGL backend stub for static Vulkan/Metal builds */
-                #include "vio_opengl.h"
-                vio_opengl_state vio_gl = {0};
-                void vio_backend_opengl_register(void) { /* no-op */ }
-                void vio_opengl_setup_context(void) { /* no-op */ }
-                unsigned int vio_opengl_compile_shader_source(const char *v, const char *f) { (void)v; (void)f; return 0; }
-
-                C);
-        }
-
         return true;
     }
 
     public function patchBeforeConfigure(): bool
     {
-        // Fix library names in configure if needed — Unix only
-        if (PHP_OS_FAMILY !== 'Windows') {
-            FileSystem::replaceFileStr(SOURCE_PATH . '/php-src/configure', '-lglfw ', '-lglfw3 ');
-        }
-
-        // Fix strdup declaration in vio_shader_compiler.c — C23 requires explicit declarations.
-        // strdup is POSIX, not standard C. Prepend feature macros and explicit declaration.
-        $shaderCompiler = SOURCE_PATH . '/php-src/ext/vio/src/vio_shader_compiler.c';
-        if (file_exists($shaderCompiler)) {
-            $content = file_get_contents($shaderCompiler);
-            if (!str_contains($content, 'STRDUP_DECLARED')) {
-                $preamble = <<<'C'
-                    /* static-php-cli: ensure strdup is available in strict C standard modes */
-                    #ifndef _GNU_SOURCE
-                    #define _GNU_SOURCE
-                    #endif
-                    #include <string.h>
-                    #ifndef STRDUP_DECLARED
-                    #define STRDUP_DECLARED
-                    extern char *strdup(const char *);
-                    #endif
-
-                    C;
-                file_put_contents($shaderCompiler, $preamble . $content);
-            }
-        }
-
         $extraLibs = [];
         if (PHP_OS_FAMILY === 'Darwin') {
             $extraLibs[] = '-lc++';
         } elseif (PHP_OS_FAMILY === 'Linux') {
             $extraLibs[] = '-lstdc++';
-            // X11 backend dependencies (only .so available on Alpine, no static .a)
+            // GPU drivers require dynamic linking
             putenv('SPC_NO_STATIC_LINK=1');
+            // X11 dependencies (same as glfw)
             $extraLibs = array_merge($extraLibs, [
                 '-lX11', '-lXrandr', '-lXinerama', '-lXcursor', '-lXi',
                 '-lXext', '-lXfixes', '-lXrender', '-lxcb', '-lXau', '-lXdmcp',
             ]);
+            $extraLibs[] = '-ldl';
+            $extraLibs[] = '-lpthread';
+            $extraLibs[] = '-lm';
         }
 
         $existing = getenv('SPC_EXTRA_LIBS') ?: '';
@@ -117,79 +50,32 @@ class vio extends Extension
         return true;
     }
 
-    public function patchBeforeMake(): bool
-    {
-        $buildDir = SOURCE_PATH . '/php-src';
-        $vulkanInc = BUILD_ROOT_PATH . '/include';
-
-        if (PHP_OS_FAMILY === 'Windows') {
-            return $this->patchBeforeMakeWindows($buildDir, $vulkanInc);
-        }
-
-        // Compile VMA C++ wrapper — the Makefile.frag rule exists but shared_objects_vio
-        // isn't consumed by the micro SAPI target, so we compile it manually and add it.
-        $vmaWrapper = $buildDir . '/ext/vio/src/backends/vulkan/vio_vma_wrapper.cpp';
-        $vmaLo = 'ext/vio/src/backends/vulkan/vio_vma_wrapper.lo';
-        if (file_exists($vmaWrapper)) {
-            $vmaInc = $buildDir . '/ext/vio/vendor/vma';
-            $extInc = $buildDir . '/ext/vio/include';
-            @mkdir(dirname("{$buildDir}/{$vmaLo}"), 0755, true);
-
-            $cxx = PHP_OS_FAMILY === 'Darwin' ? 'c++' : 'g++';
-            $phpIncludes = "-I{$buildDir} -I{$buildDir}/main -I{$buildDir}/Zend -I{$buildDir}/TSRM";
-            shell()->cd($buildDir)->exec(
-                "/bin/sh {$buildDir}/libtool --silent --preserve-dup-deps --tag=CXX --mode=compile {$cxx} -std=c++14"
-                . " -I{$vmaInc} -I{$extInc} -I{$vulkanInc} {$phpIncludes}"
-                . ' -DHAVE_VULKAN=1 -fPIC -O2'
-                . " -c {$vmaWrapper} -o {$vmaLo}"
-            );
-
-            // Add to PHP_MICRO_OBJS so make links it into micro.sfx
-            FileSystem::replaceFileStr(
-                "{$buildDir}/Makefile",
-                'PHP_MICRO_OBJS = ',
-                "PHP_MICRO_OBJS = {$vmaLo} "
-            );
-        }
-
-        // Compile Metal backend on macOS
-        if (PHP_OS_FAMILY === 'Darwin') {
-            $metalSrc = $buildDir . '/ext/vio/src/backends/metal/vio_metal.m';
-            $metalLo = 'ext/vio/src/backends/metal/vio_metal.lo';
-            if (file_exists($metalSrc)) {
-                $extInc = $buildDir . '/ext/vio/include';
-                @mkdir(dirname("{$buildDir}/{$metalLo}"), 0755, true);
-
-                $phpIncludes = "-I{$buildDir} -I{$buildDir}/main -I{$buildDir}/Zend -I{$buildDir}/TSRM";
-                shell()->cd($buildDir)->exec(
-                    "/bin/sh {$buildDir}/libtool --silent --preserve-dup-deps --tag=CC --mode=compile cc"
-                    . ' -x objective-c -fobjc-arc'
-                    . " -I{$extInc} -I{$vulkanInc} {$phpIncludes}"
-                    . ' -DHAVE_VULKAN=1 -DHAVE_METAL=1 -fPIC -O2'
-                    . " -c {$metalSrc} -o {$metalLo}"
-                );
-
-                FileSystem::replaceFileStr(
-                    "{$buildDir}/Makefile",
-                    'PHP_MICRO_OBJS = ',
-                    "PHP_MICRO_OBJS = {$metalLo} "
-                );
-            }
-        }
-
-        return true;
-    }
-
     public function getUnixConfigureArg(bool $shared = false): string
     {
-        $args = '--enable-vio'
-            . ' --with-glfw-dir=' . BUILD_ROOT_PATH
-            . ' --with-glslang=' . BUILD_ROOT_PATH
-            . ' --with-spirv-cross=' . BUILD_ROOT_PATH
-            . ' --with-vulkan=' . BUILD_ROOT_PATH;
+        $args = '--enable-vio';
+        $args .= ' --with-glfw=' . BUILD_ROOT_PATH;
+        $args .= ' --with-glslang=' . BUILD_ROOT_PATH;
+        $args .= ' --with-spirv-cross=' . BUILD_ROOT_PATH;
 
+        // Optional: ffmpeg
+        if ($this->builder->getLib('ffmpeg') !== null) {
+            $args .= ' --with-ffmpeg=' . BUILD_ROOT_PATH;
+        } else {
+            $args .= ' --without-ffmpeg';
+        }
+
+        // Vulkan: on macOS via MoltenVK, on Linux via vulkan-loader
+        if ($this->builder->getLib('vulkan-loader') !== null || $this->builder->getLib('moltenvk') !== null) {
+            $args .= ' --with-vulkan=' . BUILD_ROOT_PATH;
+        } else {
+            $args .= ' --without-vulkan';
+        }
+
+        // Metal: macOS only (uses system frameworks)
         if (PHP_OS_FAMILY === 'Darwin') {
             $args .= ' --with-metal';
+        } else {
+            $args .= ' --without-metal';
         }
 
         return $args;
@@ -197,41 +83,16 @@ class vio extends Extension
 
     public function getWindowsConfigureArg(bool $shared = false): string
     {
-        return '--enable-vio=static';
-    }
+        $args = '--enable-vio --with-glfw --with-glslang --with-spirv-cross';
+        $args .= ' --with-d3d11 --with-d3d12';
 
-    /**
-     * Compile VMA C++ wrapper on Windows and inject the .obj into the micro link step.
-     */
-    private function patchBeforeMakeWindows(string $buildDir, string $vulkanInc): bool
-    {
-        $vmaWrapper = $buildDir . '\ext\vio\src\backends\vulkan\vio_vma_wrapper.cpp';
-        if (!file_exists($vmaWrapper)) {
-            return false;
+        if ($this->builder->getLib('vulkan-loader') !== null) {
+            $args .= ' --with-vulkan';
+        }
+        if ($this->builder->getLib('ffmpeg') !== null) {
+            $args .= ' --with-ffmpeg';
         }
 
-        $vmaInc = $buildDir . '\ext\vio\vendor\vma';
-        $extInc = $buildDir . '\ext\vio\include';
-        $phpIncludes = "/I\"{$buildDir}\" /I\"{$buildDir}\\main\" /I\"{$buildDir}\\Zend\" /I\"{$buildDir}\\TSRM\"";
-        $outDir = $buildDir . '\x64\Release';
-        $vmaObj = $outDir . '\vio_vma_wrapper.obj';
-
-        // Compile VMA wrapper using cl.exe via the SDK environment
-        /** @var \SPC\builder\windows\WindowsBuilder $builder */
-        $builder = $this->builder;
-        cmd()->cd($buildDir)
-            ->execWithWrapper(
-                $builder->makeSimpleWrapper('cl.exe'),
-                '/c /std:c++14 /EHsc /MT /O2 /DHAVE_VULKAN=1 '
-                . "/I\"{$vmaInc}\" /I\"{$extInc}\" /I\"{$vulkanInc}\" {$phpIncludes} "
-                . "/Fo\"{$vmaObj}\" \"{$vmaWrapper}\""
-            );
-
-        // Add VMA obj to SPC_EXTRA_LIBS so it gets passed to LIBS_MICRO in the nmake wrapper
-        // No quotes around the path — it gets embedded inside LIBS_MICRO="..." in the wrapper
-        $existing = getenv('SPC_EXTRA_LIBS') ?: '';
-        putenv('SPC_EXTRA_LIBS=' . trim($existing . ' ' . $vmaObj));
-
-        return true;
+        return $args;
     }
 }

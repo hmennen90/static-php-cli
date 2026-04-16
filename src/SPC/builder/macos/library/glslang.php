@@ -14,10 +14,10 @@ class glslang extends MacOSLibraryBase
     {
         UnixCMakeExecutor::create($this)
             ->addConfigureArgs(
-                '-DENABLE_OPT=OFF',
-                '-DENABLE_GLSLANG_BINARIES=OFF',
-                '-DBUILD_TESTING=OFF',
                 '-DBUILD_SHARED_LIBS=OFF',
+                '-DENABLE_CTEST=OFF',
+                '-DENABLE_GLSLANG_BINARIES=OFF',
+                '-DENABLE_SPVREMAPPER=OFF',
             )
             ->build();
     }

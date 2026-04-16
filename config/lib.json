@@ -1076,6 +1076,50 @@
             "zstd_errors.h"
         ]
     },
+    "glslang": {
+        "source": "glslang",
+        "static-libs-unix": [
+            "libglslang.a",
+            "libSPIRV.a",
+            "libglslang-default-resource-limits.a"
+        ],
+        "headers": [
+            "glslang"
+        ]
+    },
+    "spirv-cross": {
+        "source": "spirv-cross",
+        "static-libs-unix": [
+            "libspirv-cross-core.a",
+            "libspirv-cross-glsl.a",
+            "libspirv-cross-hlsl.a",
+            "libspirv-cross-msl.a",
+            "libspirv-cross-reflect.a",
+            "libspirv-cross-cpp.a",
+            "libspirv-cross-util.a",
+            "libspirv-cross-c.a"
+        ],
+        "headers": [
+            "spirv_cross"
+        ]
+    },
+    "ffmpeg": {
+        "source": "ffmpeg",
+        "static-libs-unix": [
+            "libavcodec.a",
+            "libavformat.a",
+            "libavutil.a",
+            "libswscale.a",
+            "libswresample.a"
+        ],
+        "headers": [
+            "libavcodec",
+            "libavformat",
+            "libavutil",
+            "libswscale",
+            "libswresample"
+        ]
+    },
     "moltenvk": {
         "source": "moltenvk",
         "lib-depends": [

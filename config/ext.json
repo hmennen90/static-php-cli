@@ -1372,5 +1372,37 @@
         ],
         "lib-depends-windows": [],
         "lib-depends-linux": []
+    },
+    "vio": {
+        "support": {
+            "Windows": "wip",
+            "BSD": "no",
+            "Linux": "yes",
+            "Darwin": "yes"
+        },
+        "type": "external",
+        "arg-type": "custom",
+        "source": "ext-vio",
+        "lib-depends": [
+            "glfw",
+            "glslang",
+            "spirv-cross"
+        ],
+        "lib-depends-darwin": [
+            "glfw",
+            "glslang",
+            "spirv-cross",
+            "moltenvk"
+        ],
+        "lib-depends-linux": [
+            "glfw",
+            "glslang",
+            "spirv-cross",
+            "vulkan-loader"
+        ],
+        "lib-depends-windows": [],
+        "lib-suggests": [
+            "ffmpeg"
+        ]
     }
 }

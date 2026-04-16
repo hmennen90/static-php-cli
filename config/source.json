@@ -152,6 +152,15 @@
             "path": "LICENSE"
         }
     },
+    "ext-vio": {
+        "type": "git",
+        "url": "https://github.com/hmennen90/php-vio",
+        "rev": "main",
+        "license": {
+            "type": "file",
+            "path": "LICENSE"
+        }
+    },
     "ext-steamworks": {
         "type": "git",
         "url": "https://github.com/hmennen90/php-steamworks",
@@ -1321,6 +1330,33 @@
         "license": {
             "type": "file",
             "path": "LICENSE"
+        }
+    },
+    "glslang": {
+        "type": "git",
+        "url": "https://github.com/KhronosGroup/glslang",
+        "rev": "main",
+        "license": {
+            "type": "file",
+            "path": "LICENSE.txt"
+        }
+    },
+    "spirv-cross": {
+        "type": "git",
+        "url": "https://github.com/KhronosGroup/SPIRV-Cross",
+        "rev": "main",
+        "license": {
+            "type": "file",
+            "path": "LICENSE"
+        }
+    },
+    "ffmpeg": {
+        "type": "git",
+        "url": "https://github.com/FFmpeg/FFmpeg",
+        "rev": "release/7.1",
+        "license": {
+            "type": "file",
+            "path": "LICENSE.md"
         }
     },
     "moltenvk": {
