@@ -17,6 +17,7 @@ class vulkan_loader extends MacOSLibraryBase
                 '-DBUILD_SHARED_LIBS=OFF',
                 '-DBUILD_TESTS=OFF',
                 '-DUPDATE_DEPS=OFF',
+                '-DBUILD_STATIC_LOADER=ON',
             )
             ->build();
     }

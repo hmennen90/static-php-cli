@@ -21,6 +21,7 @@ class vulkan_loader extends LinuxLibraryBase
                 '-DBUILD_WSI_XLIB_SUPPORT=OFF',
                 '-DBUILD_WSI_WAYLAND_SUPPORT=OFF',
                 '-DBUILD_WSI_DIRECTFB_SUPPORT=OFF',
+                '-DBUILD_STATIC_LOADER=ON',
             )
             ->build();
     }
