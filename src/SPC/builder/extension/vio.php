@@ -115,6 +115,9 @@ class vio extends Extension
 
         // Patch the generated Makefile so the Metal .c file (copied from .m)
         // is compiled as Objective-C with ARC enabled.
+        // Instead of replacing the entire rule, inject -x objective-c -fobjc-arc
+        // before the -c flag in each existing compile rule for vio_metal.lo.
+        // This preserves the original include paths and extension-specific flags.
         $makefile = SOURCE_PATH . '/php-src/Makefile';
         if (!file_exists($makefile)) {
             return false;
@@ -122,23 +125,26 @@ class vio extends Extension
 
         $content = file_get_contents($makefile);
 
-        // The Makefile may have duplicate rules for vio_metal.lo (one explicit,
-        // one from a pattern). Remove all generated compile rules for vio_metal.lo
-        // and replace with a single custom rule that uses -x objective-c.
-        // First, remove any existing compile rules for this target.
-        $content = preg_replace(
-            '/^ext\/vio\/src\/backends\/metal\/vio_metal\.lo:.*\n(?:\t.*\n)*/m',
-            '',
+        // The Makefile may have duplicate rules for vio_metal.lo.
+        // Keep only the FIRST rule (which has explicit include paths)
+        // and remove any subsequent ones (pattern rules using $<).
+        $count = 0;
+        $content = preg_replace_callback(
+            '/^(ext\/vio\/src\/backends\/metal\/vio_metal\.lo:.*\n(?:\t.*\n)*)/m',
+            function ($match) use (&$count) {
+                $count++;
+                if ($count === 1) {
+                    // Keep first rule but inject ObjC flags before -c
+                    return str_replace(' -c ', ' -x objective-c -fobjc-arc -c ', $match[0]);
+                }
+                // Remove duplicate rules
+                return '';
+            },
             $content
         );
 
-        // Add a single custom compile rule at the end of the Makefile
-        $content .= "\n# Custom ObjC compile rule for Metal backend\n";
-        $content .= "ext/vio/src/backends/metal/vio_metal.lo: \$(srcdir)/ext/vio/src/backends/metal/vio_metal.c\n";
-        $content .= "\t\$(LIBTOOL) --silent --preserve-dup-deps --tag=CC --mode=compile \$(CC) \$(CFLAGS) \$(CFLAGS_CLEAN) \$(EXTRA_CFLAGS) -x objective-c -fobjc-arc -c \$< -o \$@ -MMD -MF ext/vio/src/backends/metal/vio_metal.dep -MT \$@\n";
-
         file_put_contents($makefile, $content);
-        return true;
+        return $count > 0;
     }
 
     public function getUnixConfigureArg(bool $shared = false): string

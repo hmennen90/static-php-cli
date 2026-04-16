@@ -1076,33 +1076,6 @@
             "zstd_errors.h"
         ]
     },
-    "glslang": {
-        "source": "glslang",
-        "static-libs-unix": [
-            "libglslang.a",
-            "libSPIRV.a",
-            "libglslang-default-resource-limits.a"
-        ],
-        "headers": [
-            "glslang"
-        ]
-    },
-    "spirv-cross": {
-        "source": "spirv-cross",
-        "static-libs-unix": [
-            "libspirv-cross-core.a",
-            "libspirv-cross-glsl.a",
-            "libspirv-cross-hlsl.a",
-            "libspirv-cross-msl.a",
-            "libspirv-cross-reflect.a",
-            "libspirv-cross-cpp.a",
-            "libspirv-cross-util.a",
-            "libspirv-cross-c.a"
-        ],
-        "headers": [
-            "spirv_cross"
-        ]
-    },
     "ffmpeg": {
         "source": "ffmpeg",
         "static-libs-unix": [
@@ -1183,22 +1156,22 @@
     "spirv-cross": {
         "source": "spirv-cross",
         "static-libs-unix": [
-            "libspirv-cross-core.a",
+            "libspirv-cross-c.a",
             "libspirv-cross-glsl.a",
             "libspirv-cross-msl.a",
             "libspirv-cross-hlsl.a",
             "libspirv-cross-reflect.a",
             "libspirv-cross-cpp.a",
-            "libspirv-cross-c.a"
+            "libspirv-cross-core.a"
         ],
         "static-libs-windows": [
-            "spirv-cross-core.lib",
+            "spirv-cross-c.lib",
             "spirv-cross-glsl.lib",
             "spirv-cross-msl.lib",
             "spirv-cross-hlsl.lib",
             "spirv-cross-reflect.lib",
             "spirv-cross-cpp.lib",
-            "spirv-cross-c.lib"
+            "spirv-cross-core.lib"
         ],
         "headers": [
             "spirv_cross"

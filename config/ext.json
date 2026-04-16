@@ -250,8 +250,10 @@
         "lib-depends-windows": [
             "glfw",
             "glslang",
-            "spirv-cross",
-            "vulkan-loader"
+            "spirv-cross"
+        ],
+        "lib-suggests": [
+            "ffmpeg"
         ]
     },
     "steamworks": {
@@ -1371,31 +1373,5 @@
         ],
         "lib-depends-windows": [],
         "lib-depends-linux": []
-    },
-    "vio": {
-        "support": {
-            "Windows": "wip",
-            "BSD": "no",
-            "Linux": "yes",
-            "Darwin": "yes"
-        },
-        "type": "external",
-        "arg-type": "custom",
-        "source": "ext-vio",
-        "lib-depends": [
-            "glfw",
-            "glslang",
-            "spirv-cross"
-        ],
-        "lib-depends-macos": [
-            "glfw",
-            "glslang",
-            "spirv-cross",
-            "moltenvk"
-        ],
-        "lib-depends-windows": [],
-        "lib-suggests": [
-            "ffmpeg"
-        ]
     }
 }
