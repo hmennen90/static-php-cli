@@ -54,29 +54,6 @@ class vio extends Extension
             );
         }
 
-        // On macOS: add Metal .m source to config.m4 source list so phpize picks it up.
-        // We rename .m to .c and compile with -x objective-c via CFLAGS in patchBeforeMake().
-        if (PHP_OS_FAMILY === 'Darwin') {
-            $metalSrc = SOURCE_PATH . '/php-src/ext/vio/src/backends/metal/vio_metal.m';
-            $metalC = SOURCE_PATH . '/php-src/ext/vio/src/backends/metal/vio_metal.c';
-            if (file_exists($metalSrc) && !file_exists($metalC)) {
-                copy($metalSrc, $metalC);
-                // Remove the original .m file so the build system doesn't try
-                // to compile it separately (with missing include paths for config.h).
-                unlink($metalSrc);
-            }
-
-            // Add vio_metal.c to the PHP_NEW_EXTENSION source list in config.m4
-            $configM4 = SOURCE_PATH . '/php-src/ext/vio/config.m4';
-            if (file_exists($configM4)) {
-                FileSystem::replaceFileStr(
-                    $configM4,
-                    'src/vio_backend_null.c \\',
-                    "src/vio_backend_null.c \\\n    src/backends/metal/vio_metal.c \\"
-                );
-            }
-        }
-
         return true;
     }
 
@@ -108,46 +85,6 @@ class vio extends Extension
         putenv('SPC_EXTRA_LIBS=' . trim($existing));
 
         return true;
-    }
-
-    public function patchBeforeMake(): bool
-    {
-        if (PHP_OS_FAMILY !== 'Darwin') {
-            return false;
-        }
-
-        // Patch the generated Makefile so the Metal .c file (copied from .m)
-        // is compiled as Objective-C with ARC enabled.
-        // Instead of replacing the entire rule, inject -x objective-c -fobjc-arc
-        // before the -c flag in each existing compile rule for vio_metal.lo.
-        // This preserves the original include paths and extension-specific flags.
-        $makefile = SOURCE_PATH . '/php-src/Makefile';
-        if (!file_exists($makefile)) {
-            return false;
-        }
-
-        $content = file_get_contents($makefile);
-
-        // The Makefile may have duplicate rules for vio_metal.lo.
-        // Keep only the FIRST rule (which has explicit include paths)
-        // and remove any subsequent ones (pattern rules using $<).
-        $count = 0;
-        $content = preg_replace_callback(
-            '/^(ext\/vio\/src\/backends\/metal\/vio_metal\.lo:.*\n(?:\t.*\n)*)/m',
-            function ($match) use (&$count) {
-                ++$count;
-                if ($count === 1) {
-                    // Keep first rule but inject ObjC flags before -c
-                    return str_replace(' -c ', ' -x objective-c -fobjc-arc -c ', $match[0]);
-                }
-                // Remove duplicate rules
-                return '';
-            },
-            $content
-        );
-
-        file_put_contents($makefile, $content);
-        return $count > 0;
     }
 
     public function getUnixConfigureArg(bool $shared = false): string
