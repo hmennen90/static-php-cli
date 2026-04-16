@@ -54,10 +54,34 @@ class vio extends Extension
             );
         }
 
-        // On macOS: compile Metal .m as .c with ObjC flags injected later.
-        // Makefile.frag's Metal rule only adds to shared_objects_vio which isn't
-        // used in static builds. We add the source to PHP_NEW_EXTENSION instead,
-        // and neutralize the Makefile.frag rule to avoid conflicts.
+        // Makefile.frag objects (VMA C++ wrapper, Metal .m) are only added to
+        // shared_objects_vio which isn't used in static builds. We add sources
+        // directly to PHP_NEW_EXTENSION and remove the Makefile.frag rules.
+        $configM4 = SOURCE_PATH . '/php-src/ext/vio/config.m4';
+        $makefileFrag = SOURCE_PATH . '/php-src/ext/vio/Makefile.frag';
+
+        // VMA C++ wrapper: add .cpp to config.m4 source list for static builds.
+        // PHP's build system handles .cpp via CXX rules when PHP_REQUIRE_CXX() is set.
+        if (file_exists($configM4)) {
+            FileSystem::replaceFileStr(
+                $configM4,
+                'src/backends/vulkan/vio_vulkan.c \\',
+                "src/backends/vulkan/vio_vulkan.c \\\n    src/backends/vulkan/vio_vma_wrapper.cpp \\"
+            );
+        }
+
+        // Remove the VMA block from Makefile.frag to prevent duplicate rules
+        if (file_exists($makefileFrag)) {
+            $content = file_get_contents($makefileFrag);
+            $content = preg_replace(
+                '/^# VMA C\+\+.*?^endif\s*$/ms',
+                '',
+                $content
+            );
+            file_put_contents($makefileFrag, $content);
+        }
+
+        // Metal: macOS only — compile .m as .c with ObjC flags injected later.
         if (PHP_OS_FAMILY === 'Darwin') {
             $metalSrc = SOURCE_PATH . '/php-src/ext/vio/src/backends/metal/vio_metal.m';
             $metalC = SOURCE_PATH . '/php-src/ext/vio/src/backends/metal/vio_metal.c';
@@ -162,9 +186,13 @@ class vio extends Extension
             $args .= ' --without-ffmpeg';
         }
 
-        // Vulkan: disabled in static builds — VMA C++ wrapper requires
-        // Makefile.frag which is not processed in the static build pipeline
-        $args .= ' --without-vulkan';
+        // Vulkan: enable if vulkan-headers are available (VMA wrapper is now
+        // added to PHP_NEW_EXTENSION in patchBeforeBuildconf)
+        if ($this->builder->getLib('vulkan-headers') !== null) {
+            $args .= ' --with-vulkan=' . BUILD_ROOT_PATH;
+        } else {
+            $args .= ' --without-vulkan';
+        }
 
         // Metal: macOS only (Objective-C source is patched into the build above)
         if (PHP_OS_FAMILY === 'Darwin') {
