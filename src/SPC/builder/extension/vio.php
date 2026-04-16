@@ -86,27 +86,15 @@ class vio extends Extension
 
         $content = file_get_contents($makefile);
 
-        // The generated Makefile has individual compile rules like:
-        //   ext/vio/src/backends/metal/vio_metal.lo: $(srcdir)/ext/vio/src/backends/metal/vio_metal.c
-        //       $(LIBTOOL) ... $(CC) ... -c $< -o $@
-        // We need to inject -x objective-c -fobjc-arc into that specific rule.
-        // Strategy: find any line that compiles vio_metal.c and add the flags.
+        // The generated Makefile compile rule looks like:
+        //   $(LIBTOOL) ... clang ... -c $(srcdir)/ext/vio/.../vio_metal.c -o .../vio_metal.lo
+        // We need -x objective-c BEFORE the source file for clang to treat it as ObjC.
+        // Insert the flags right before the -c flag on the vio_metal compile line.
         $content = preg_replace(
-            '/([\t ]+.*-c\s+.*ext\/vio\/src\/backends\/metal\/vio_metal\.c)/',
-            '$1 -x objective-c -fobjc-arc',
+            '/([\t ]+.*)(-c\s+\S*ext\/vio\/src\/backends\/metal\/vio_metal\.c)/',
+            '$1-x objective-c -fobjc-arc $2',
             $content
         );
-
-        // Also handle the case where the source ref uses $(srcdir) prefix
-        // and the -c flag comes before the filename
-        if (!str_contains($content, '-x objective-c')) {
-            // Fallback: add ObjC flags to the CFLAGS line for this specific .lo target
-            $content = preg_replace(
-                '/(ext\/vio\/src\/backends\/metal\/vio_metal\.lo\s*:.*)/',
-                "$1\next/vio/src/backends/metal/vio_metal.lo: EXTRA_CFLAGS += -x objective-c -fobjc-arc",
-                $content
-            );
-        }
 
         file_put_contents($makefile, $content);
         return true;
