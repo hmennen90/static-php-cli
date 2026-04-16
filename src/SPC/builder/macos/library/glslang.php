@@ -18,6 +18,7 @@ class glslang extends MacOSLibraryBase
                 '-DENABLE_CTEST=OFF',
                 '-DENABLE_GLSLANG_BINARIES=OFF',
                 '-DENABLE_SPVREMAPPER=OFF',
+                '-DENABLE_OPT=OFF',
             )
             ->build();
     }
