@@ -18,50 +18,15 @@ class vio extends Extension
         }
         FileSystem::copyDir(SOURCE_PATH . '/ext-vio', SOURCE_PATH . '/php-src/ext/vio');
 
-        // Remove vio's bundled vendor libs that duplicate php-glfw's (glad, stb, miniaudio)
-        // Both config.m4 and config.w32 list these; removing prevents LNK2005 on Windows
-        // and potential issues on Unix.
-        $configM4 = SOURCE_PATH . '/php-src/ext/vio/config.m4';
-        if (file_exists($configM4)) {
-            // Replace from the continuation backslash of the last non-vendor line
-            // through the end of the vendor block, ending with just a comma.
-            FileSystem::replaceFileStr(
-                $configM4,
-                " \\\n    vendor/glad/src/glad.c" .
-                " \\\n    vendor/stb/stb_image_impl.c" .
-                " \\\n    vendor/stb/stb_truetype_impl.c" .
-                " \\\n    vendor/stb/stb_image_write_impl.c" .
-                " \\\n    vendor/miniaudio/miniaudio_impl.c,",
-                ','
-            );
-        }
-        $configW32 = SOURCE_PATH . '/php-src/ext/vio/config.w32';
-        if (file_exists($configW32)) {
-            // Replace the vendor source block in config.w32 with just the final semicolon.
-            // The block goes from glad.c through miniaudio_impl.c (last source file).
-            // Replace from the end of the last non-vendor source line through
-            // the end of the vendor block. The previous line ends with '" +'
-            // and we replace it all with just '";' to end the source string.
-            FileSystem::replaceFileStr(
-                $configW32,
-                "\" +\n" .
-                "        \"vendor\\\\glad\\\\src\\\\glad.c \" +\n" .
-                "        \"vendor\\\\stb\\\\stb_image_impl.c \" +\n" .
-                "        \"vendor\\\\stb\\\\stb_truetype_impl.c \" +\n" .
-                "        \"vendor\\\\stb\\\\stb_image_write_impl.c \" +\n" .
-                '        "vendor\\\miniaudio\\\miniaudio_impl.c";',
-                '";'  // close the previous source entry with semicolon
-            );
-        }
-
         // Makefile.frag objects (VMA C++ wrapper, Metal .m) are only added to
         // shared_objects_vio which isn't used in static builds. We add sources
         // directly to PHP_NEW_EXTENSION and remove the Makefile.frag rules.
+        // NOTE: VMA insertion must happen BEFORE vendor removal, because vendor
+        // removal changes the trailing `\` to `,` after vio_vulkan.c.
         $configM4 = SOURCE_PATH . '/php-src/ext/vio/config.m4';
         $makefileFrag = SOURCE_PATH . '/php-src/ext/vio/Makefile.frag';
 
         // VMA C++ wrapper: add .cpp to config.m4 source list for static builds.
-        // PHP's build system handles .cpp via CXX rules when PHP_REQUIRE_CXX() is set.
         if (file_exists($configM4)) {
             FileSystem::replaceFileStr(
                 $configM4,
@@ -79,6 +44,34 @@ class vio extends Extension
                 $content
             );
             file_put_contents($makefileFrag, $content);
+        }
+
+        // Remove vio's bundled vendor libs that duplicate php-glfw's (glad, stb, miniaudio)
+        // Both config.m4 and config.w32 list these; removing prevents LNK2005 on Windows
+        // and potential issues on Unix.
+        if (file_exists($configM4)) {
+            FileSystem::replaceFileStr(
+                $configM4,
+                " \\\n    vendor/glad/src/glad.c" .
+                " \\\n    vendor/stb/stb_image_impl.c" .
+                " \\\n    vendor/stb/stb_truetype_impl.c" .
+                " \\\n    vendor/stb/stb_image_write_impl.c" .
+                " \\\n    vendor/miniaudio/miniaudio_impl.c,",
+                ','
+            );
+        }
+        $configW32 = SOURCE_PATH . '/php-src/ext/vio/config.w32';
+        if (file_exists($configW32)) {
+            FileSystem::replaceFileStr(
+                $configW32,
+                "\" +\n" .
+                "        \"vendor\\\\glad\\\\src\\\\glad.c \" +\n" .
+                "        \"vendor\\\\stb\\\\stb_image_impl.c \" +\n" .
+                "        \"vendor\\\\stb\\\\stb_truetype_impl.c \" +\n" .
+                "        \"vendor\\\\stb\\\\stb_image_write_impl.c \" +\n" .
+                '        "vendor\\\miniaudio\\\miniaudio_impl.c";',
+                '";'
+            );
         }
 
         // Metal: macOS only — compile .m as .c with ObjC flags injected later.
