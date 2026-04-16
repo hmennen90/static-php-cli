@@ -17,6 +17,10 @@ class vulkan_loader extends LinuxLibraryBase
                 '-DBUILD_SHARED_LIBS=OFF',
                 '-DBUILD_TESTS=OFF',
                 '-DUPDATE_DEPS=OFF',
+                '-DBUILD_WSI_XCB_SUPPORT=OFF',
+                '-DBUILD_WSI_XLIB_SUPPORT=OFF',
+                '-DBUILD_WSI_WAYLAND_SUPPORT=OFF',
+                '-DBUILD_WSI_DIRECTFB_SUPPORT=OFF',
             )
             ->build();
     }
