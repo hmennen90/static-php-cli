@@ -106,9 +106,11 @@ class vio extends Extension
         }
 
         $content = file_get_contents($makefile);
-        $content = str_replace(
-            '-c $(abs_srcdir)/ext/vio/src/backends/metal/vio_metal.c',
-            '-x objective-c -fobjc-arc -c $(abs_srcdir)/ext/vio/src/backends/metal/vio_metal.c',
+        // The Makefile expands $(abs_srcdir) to the full path, so match
+        // any path ending with the Metal source file.
+        $content = preg_replace(
+            '#-c\s+(\S+/ext/vio/src/backends/metal/vio_metal\.c)#',
+            '-x objective-c -fobjc-arc -c $1',
             $content
         );
         file_put_contents($makefile, $content);
