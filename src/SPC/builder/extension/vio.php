@@ -18,6 +18,19 @@ class vio extends Extension
         }
         FileSystem::copyDir(SOURCE_PATH . '/ext-vio', SOURCE_PATH . '/php-src/ext/vio');
 
+        // Remove vio's bundled GLAD to avoid duplicate symbols with php-glfw's GLAD
+        $configM4 = SOURCE_PATH . '/php-src/ext/vio/config.m4';
+        if (file_exists($configM4)) {
+            FileSystem::replaceFileStr($configM4, "vendor/glad/src/glad.c \\\n    ", '');
+        }
+        $configW32 = SOURCE_PATH . '/php-src/ext/vio/config.w32';
+        if (file_exists($configW32)) {
+            $w32content = file_get_contents($configW32);
+            // Remove the glad.c source line (avoids duplicate symbols with glfw's GLAD)
+            $w32content = preg_replace('/\s*"vendor\\\\\\\\glad\\\\\\\\src\\\\\\\\glad\.c " \+/', '', $w32content);
+            file_put_contents($configW32, $w32content);
+        }
+
         // On macOS: add Metal .m source to config.m4 source list so phpize picks it up.
         // We rename .m to .c and compile with -x objective-c via CFLAGS in patchBeforeMake().
         if (PHP_OS_FAMILY === 'Darwin') {
