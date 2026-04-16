@@ -54,6 +54,65 @@ class vio extends Extension
             );
         }
 
+        // On macOS: compile Metal .m as .c with ObjC flags injected later.
+        // Makefile.frag's Metal rule only adds to shared_objects_vio which isn't
+        // used in static builds. We add the source to PHP_NEW_EXTENSION instead,
+        // and neutralize the Makefile.frag rule to avoid conflicts.
+        if (PHP_OS_FAMILY === 'Darwin') {
+            $metalSrc = SOURCE_PATH . '/php-src/ext/vio/src/backends/metal/vio_metal.m';
+            $metalC = SOURCE_PATH . '/php-src/ext/vio/src/backends/metal/vio_metal.c';
+            if (file_exists($metalSrc) && !file_exists($metalC)) {
+                copy($metalSrc, $metalC);
+            }
+
+            // Add vio_metal.c to the PHP_NEW_EXTENSION source list in config.m4
+            $configM4 = SOURCE_PATH . '/php-src/ext/vio/config.m4';
+            if (file_exists($configM4)) {
+                FileSystem::replaceFileStr(
+                    $configM4,
+                    'src/vio_backend_null.c \\',
+                    "src/vio_backend_null.c \\\n    src/backends/metal/vio_metal.c \\"
+                );
+            }
+
+            // Remove the Metal block from Makefile.frag to prevent a duplicate
+            // rule for vio_metal.lo (we handle it via config.m4 above).
+            $makefileFrag = SOURCE_PATH . '/php-src/ext/vio/Makefile.frag';
+            if (file_exists($makefileFrag)) {
+                $content = file_get_contents($makefileFrag);
+                $content = preg_replace(
+                    '/^# Metal backend.*?^endif\s*$/ms',
+                    '',
+                    $content
+                );
+                file_put_contents($makefileFrag, $content);
+            }
+        }
+
+        return true;
+    }
+
+    public function patchBeforeMake(): bool
+    {
+        if (PHP_OS_FAMILY !== 'Darwin') {
+            return false;
+        }
+
+        // Patch the generated Makefile so the Metal .c file (copied from .m)
+        // is compiled as Objective-C with ARC enabled.
+        $makefile = SOURCE_PATH . '/php-src/Makefile';
+        if (!file_exists($makefile)) {
+            return false;
+        }
+
+        $content = file_get_contents($makefile);
+        $content = str_replace(
+            '-c $(abs_srcdir)/ext/vio/src/backends/metal/vio_metal.c',
+            '-x objective-c -fobjc-arc -c $(abs_srcdir)/ext/vio/src/backends/metal/vio_metal.c',
+            $content
+        );
+        file_put_contents($makefile, $content);
+
         return true;
     }
 
