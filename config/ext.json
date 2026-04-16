@@ -1387,17 +1387,11 @@
             "glslang",
             "spirv-cross"
         ],
-        "lib-depends-darwin": [
+        "lib-depends-macos": [
             "glfw",
             "glslang",
             "spirv-cross",
             "moltenvk"
-        ],
-        "lib-depends-linux": [
-            "glfw",
-            "glslang",
-            "spirv-cross",
-            "vulkan-loader"
         ],
         "lib-depends-windows": [],
         "lib-suggests": [
