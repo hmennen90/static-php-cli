@@ -23,27 +23,35 @@ class vio extends Extension
         // and potential issues on Unix.
         $configM4 = SOURCE_PATH . '/php-src/ext/vio/config.m4';
         if (file_exists($configM4)) {
-            // Replace the entire vendor source block with just a comma to end the source list
+            // Replace from the continuation backslash of the last non-vendor line
+            // through the end of the vendor block, ending with just a comma.
             FileSystem::replaceFileStr(
                 $configM4,
-                "vendor/glad/src/glad.c \\\n" .
-                "    vendor/stb/stb_image_impl.c \\\n" .
-                "    vendor/stb/stb_truetype_impl.c \\\n" .
-                "    vendor/stb/stb_image_write_impl.c \\\n" .
-                "    vendor/miniaudio/miniaudio_impl.c,",
-                ','  // just the comma that ends the PHP_NEW_EXTENSION source list
+                " \\\n    vendor/glad/src/glad.c" .
+                " \\\n    vendor/stb/stb_image_impl.c" .
+                " \\\n    vendor/stb/stb_truetype_impl.c" .
+                " \\\n    vendor/stb/stb_image_write_impl.c" .
+                " \\\n    vendor/miniaudio/miniaudio_impl.c,",
+                ','
             );
         }
         $configW32 = SOURCE_PATH . '/php-src/ext/vio/config.w32';
         if (file_exists($configW32)) {
-            $w32content = file_get_contents($configW32);
-            // Remove all vendor source lines (glad, stb_*, miniaudio)
-            $w32content = preg_replace(
-                '/\s*"vendor\\\\\\\\(?:glad\\\\\\\\src\\\\\\\\glad|stb\\\\\\\\stb_\w+|miniaudio\\\\\\\\miniaudio_impl)\.c " \+/m',
-                '',
-                $w32content
+            // Replace the vendor source block in config.w32 with just the final semicolon.
+            // The block goes from glad.c through miniaudio_impl.c (last source file).
+            // Replace from the end of the last non-vendor source line through
+            // the end of the vendor block. The previous line ends with '" +'
+            // and we replace it all with just '";' to end the source string.
+            FileSystem::replaceFileStr(
+                $configW32,
+                "\" +\n" .
+                "        \"vendor\\\\glad\\\\src\\\\glad.c \" +\n" .
+                "        \"vendor\\\\stb\\\\stb_image_impl.c \" +\n" .
+                "        \"vendor\\\\stb\\\\stb_truetype_impl.c \" +\n" .
+                "        \"vendor\\\\stb\\\\stb_image_write_impl.c \" +\n" .
+                "        \"vendor\\\\miniaudio\\\\miniaudio_impl.c\";",
+                '";'  // close the previous source entry with semicolon
             );
-            file_put_contents($configW32, $w32content);
         }
 
         // On macOS: add Metal .m source to config.m4 source list so phpize picks it up.
