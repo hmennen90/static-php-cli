@@ -154,7 +154,7 @@
     },
     "ext-vio": {
         "type": "git",
-        "url": "https://github.com/hmennen90/php-vio",
+        "url": "https://github.com/phpolygon/php-vio",
         "rev": "main",
         "license": {
             "type": "file",
@@ -1335,7 +1335,7 @@
     "glslang": {
         "type": "git",
         "url": "https://github.com/KhronosGroup/glslang",
-        "rev": "main",
+        "rev": "16.2.0",
         "license": {
             "type": "file",
             "path": "LICENSE.txt"
@@ -1344,7 +1344,7 @@
     "spirv-cross": {
         "type": "git",
         "url": "https://github.com/KhronosGroup/SPIRV-Cross",
-        "rev": "main",
+        "rev": "vulkan-sdk-1.4.313.0",
         "license": {
             "type": "file",
             "path": "LICENSE"
@@ -1376,33 +1376,6 @@
         "license": {
             "type": "file",
             "path": "LICENSE.txt"
-        }
-    },
-    "ext-vio": {
-        "type": "git",
-        "url": "https://github.com/phpolygon/php-vio",
-        "rev": "1.2.0",
-        "license": {
-            "type": "file",
-            "path": "LICENSE"
-        }
-    },
-    "glslang": {
-        "type": "git",
-        "url": "https://github.com/KhronosGroup/glslang",
-        "rev": "16.2.0",
-        "license": {
-            "type": "file",
-            "path": "LICENSE.txt"
-        }
-    },
-    "spirv-cross": {
-        "type": "git",
-        "url": "https://github.com/KhronosGroup/SPIRV-Cross",
-        "rev": "vulkan-sdk-1.4.313.0",
-        "license": {
-            "type": "file",
-            "path": "LICENSE"
         }
     },
     "vulkan-headers": {
