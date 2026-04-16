@@ -21,6 +21,7 @@ class spirv_cross extends WindowsLibraryBase
                 '-A x64 ' .
                 "-DCMAKE_TOOLCHAIN_FILE={$this->builder->cmake_toolchain_file} " .
                 '-DCMAKE_BUILD_TYPE=Release ' .
+                '-DCMAKE_POLICY_DEFAULT_CMP0091=NEW ' .
                 '-DSPIRV_CROSS_SHARED=OFF ' .
                 '-DSPIRV_CROSS_CLI=OFF ' .
                 '-DSPIRV_CROSS_ENABLE_TESTS=OFF ' .

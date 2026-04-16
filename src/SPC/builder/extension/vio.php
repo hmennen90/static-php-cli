@@ -49,7 +49,7 @@ class vio extends Extension
                 "        \"vendor\\\\stb\\\\stb_image_impl.c \" +\n" .
                 "        \"vendor\\\\stb\\\\stb_truetype_impl.c \" +\n" .
                 "        \"vendor\\\\stb\\\\stb_image_write_impl.c \" +\n" .
-                "        \"vendor\\\\miniaudio\\\\miniaudio_impl.c\";",
+                '        "vendor\\\miniaudio\\\miniaudio_impl.c";',
                 '";'  // close the previous source entry with semicolon
             );
         }
@@ -58,9 +58,12 @@ class vio extends Extension
         // We rename .m to .c and compile with -x objective-c via CFLAGS in patchBeforeMake().
         if (PHP_OS_FAMILY === 'Darwin') {
             $metalSrc = SOURCE_PATH . '/php-src/ext/vio/src/backends/metal/vio_metal.m';
-            $metalC   = SOURCE_PATH . '/php-src/ext/vio/src/backends/metal/vio_metal.c';
+            $metalC = SOURCE_PATH . '/php-src/ext/vio/src/backends/metal/vio_metal.c';
             if (file_exists($metalSrc) && !file_exists($metalC)) {
                 copy($metalSrc, $metalC);
+                // Remove the original .m file so the build system doesn't try
+                // to compile it separately (with missing include paths for config.h).
+                unlink($metalSrc);
             }
 
             // Add vio_metal.c to the PHP_NEW_EXTENSION source list in config.m4
@@ -132,7 +135,7 @@ class vio extends Extension
         $content = preg_replace_callback(
             '/^(ext\/vio\/src\/backends\/metal\/vio_metal\.lo:.*\n(?:\t.*\n)*)/m',
             function ($match) use (&$count) {
-                $count++;
+                ++$count;
                 if ($count === 1) {
                     // Keep first rule but inject ObjC flags before -c
                     return str_replace(' -c ', ' -x objective-c -fobjc-arc -c ', $match[0]);
