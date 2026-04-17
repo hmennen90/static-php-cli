@@ -2,15 +2,6 @@ name: "Build Game micro.sfx"
 
 on:
   workflow_dispatch:
-    inputs:
-      php-version:
-        required: true
-        description: PHP version
-        default: '8.5'
-        type: choice
-        options:
-          - '8.5'
-          - '8.4'
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -20,6 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        php-version: ['8.4', '8.5']
         os:
           - name: macos-aarch64
             runner: macos-15
@@ -52,7 +44,7 @@ jobs:
           # Steam on Linux ARM64 not needed (Steam runs x86_64 only)
           - os: { name: linux-aarch64 }
             variant: { name: steam }
-    name: "${{ matrix.variant.name }} / ${{ matrix.os.name }}"
+    name: "${{ matrix.variant.name }} / ${{ matrix.os.name }} / php${{ matrix.php-version }}"
     runs-on: ${{ matrix.os.runner }}
     timeout-minutes: 120
     steps:
@@ -85,7 +77,7 @@ jobs:
           composer update --no-dev --classmap-authoritative
           ./bin/spc doctor --auto-fix || true
           ./bin/spc download \
-            --with-php=${{ inputs.php-version }} \
+            --with-php=${{ matrix.php-version }} \
             --for-extensions=${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} \
             --ignore-cache-sources=php-src \
             --prefer-pre-built
@@ -101,7 +93,7 @@ jobs:
             SPC_CMD="./bin/spc-alpine-docker"
           fi
           $SPC_CMD download \
-            --with-php=${{ inputs.php-version }} \
+            --with-php=${{ matrix.php-version }} \
             --for-extensions=${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} \
             --ignore-cache-sources=php-src \
             --prefer-pre-built
@@ -116,7 +108,7 @@ jobs:
         if: matrix.os.platform == 'windows'
         run: |
           ./bin/spc doctor
-          ./bin/spc download --with-php="${{ inputs.php-version }}" --for-extensions="${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }}" --prefer-pre-built
+          ./bin/spc download --with-php="${{ matrix.php-version }}" --for-extensions="${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }}" --prefer-pre-built
           ./bin/spc build "${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }}" --build-micro -I "memory_limit=-1" --without-micro-ext-test
 
       # ── Upload logs on failure ──
@@ -124,14 +116,14 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: build-logs-${{ matrix.variant.name }}-${{ inputs.php-version }}-${{ matrix.os.name }}
+          name: build-logs-${{ matrix.variant.name }}-${{ matrix.php-version }}-${{ matrix.os.name }}
           path: log/
 
       # ── Upload artifacts ──
       - name: "Upload micro.sfx"
         uses: actions/upload-artifact@v4
         with:
-          name: micro-sfx-${{ matrix.variant.name }}-${{ inputs.php-version }}-${{ matrix.os.name }}
+          name: micro-sfx-${{ matrix.variant.name }}-${{ matrix.php-version }}-${{ matrix.os.name }}
           path: |
             buildroot/bin/micro.sfx
             buildroot/bin/micro.sfx.exe
@@ -149,23 +141,26 @@ jobs:
       - name: "Upload licenses"
         uses: actions/upload-artifact@v4
         with:
-          name: licenses-${{ matrix.variant.name }}-${{ inputs.php-version }}-${{ matrix.os.name }}
+          name: licenses-${{ matrix.variant.name }}-${{ matrix.php-version }}-${{ matrix.os.name }}
           path: buildroot/license/
 
   # ── Create GitHub Release with all micro.sfx binaries ──
   release:
-    name: "Create Release"
+    name: "Release / php${{ matrix.php-version }}"
     needs: build
     if: always() && contains(needs.build.result, 'success')
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php-version: ['8.4', '8.5']
     steps:
-      - name: "Download all micro.sfx artifacts"
+      - name: "Download micro.sfx artifacts for PHP ${{ matrix.php-version }}"
         uses: actions/download-artifact@v4
         with:
-          pattern: micro-sfx-*
+          pattern: micro-sfx-*-${{ matrix.php-version }}-*
           path: release-assets/
 
-      - name: "Download all libsteam artifacts"
+      - name: "Download libsteam artifacts"
         uses: actions/download-artifact@v4
         with:
           pattern: libsteam-api-*
@@ -174,7 +169,6 @@ jobs:
       - name: "Prepare release files"
         run: |
           mkdir -p release-files
-          # Package each artifact as a zip
           cd release-assets
           for dir in */; do
             name="${dir%/}"
@@ -187,8 +181,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="runtime-php${{ inputs.php-version }}"
-          TITLE="Game Runtime PHP ${{ inputs.php-version }}"
+          TAG="runtime-php${{ matrix.php-version }}"
+          TITLE="Game Runtime PHP ${{ matrix.php-version }}"
 
           # Delete existing release if it exists
           gh release delete "$TAG" -R ${{ github.repository }} --yes 2>/dev/null || true
@@ -199,7 +193,7 @@ jobs:
             --title "$TITLE" \
             --notes "Pre-built micro.sfx binaries for game distribution.
 
-          **PHP Version:** ${{ inputs.php-version }}
+          **PHP Version:** ${{ matrix.php-version }}
           **Extensions (base):** glfw, vio, vulkan, metal (macOS), mbstring, zip, phar
           **Extensions (steam):** glfw, vio, vulkan, metal (macOS), mbstring, zip, phar, steamworks
 
