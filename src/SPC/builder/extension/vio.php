@@ -56,13 +56,25 @@ class vio extends Extension
         if ($hasGlfwExt) {
             // glfw's patchBeforeBuildconf copies sources to php-src/ext/glfw/,
             // so we must patch the copy, not the original in ext-glfw/.
-            $fontstash = SOURCE_PATH . '/php-src/ext/glfw/vendor/nanovg/src/fontstash.h';
+            $fontstash = SOURCE_PATH . DIRECTORY_SEPARATOR . 'php-src' . DIRECTORY_SEPARATOR
+                . 'ext' . DIRECTORY_SEPARATOR . 'glfw' . DIRECTORY_SEPARATOR . 'vendor'
+                . DIRECTORY_SEPARATOR . 'nanovg' . DIRECTORY_SEPARATOR . 'src'
+                . DIRECTORY_SEPARATOR . 'fontstash.h';
             if (file_exists($fontstash)) {
-                FileSystem::replaceFileStr(
-                    $fontstash,
-                    "#define STB_TRUETYPE_IMPLEMENTATION\n",
-                    "#define STB_TRUETYPE_IMPLEMENTATION\n#define STBTT_STATIC\n"
-                );
+                // Normalize CRLF before matching — Windows sources may have \r\n
+                $content = file_get_contents($fontstash);
+                $content = str_replace("\r\n", "\n", $content);
+                if (!str_contains($content, '#define STBTT_STATIC')) {
+                    $content = str_replace(
+                        "#define STB_TRUETYPE_IMPLEMENTATION\n",
+                        "#define STB_TRUETYPE_IMPLEMENTATION\n#define STBTT_STATIC\n",
+                        $content
+                    );
+                    file_put_contents($fontstash, $content);
+                }
+                logger()->info('[vio] Patched fontstash.h with STBTT_STATIC');
+            } else {
+                logger()->warning('[vio] fontstash.h not found at: ' . $fontstash);
             }
         }
 
