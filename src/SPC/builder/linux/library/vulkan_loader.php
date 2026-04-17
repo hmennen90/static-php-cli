@@ -13,21 +13,23 @@ class vulkan_loader extends LinuxLibraryBase
 
     protected function build(): void
     {
-        // Vulkan-Loader hardcodes add_library(vulkan SHARED) on Linux.
-        // Patch the loader CMakeLists.txt to build a static library instead.
+        // Vulkan-Loader hardcodes add_library(vulkan SHARED) on Linux inside an
+        // if(APPLE_STATIC_LOADER)...STATIC...else()...SHARED...endif() block.
+        // Replace the entire block with a single STATIC call, and remove the
+        // later APPLE_STATIC_LOADER guard that calls return() to skip install.
         $loaderCmake = $this->source_dir . '/loader/CMakeLists.txt';
         if (file_exists($loaderCmake)) {
             $content = file_get_contents($loaderCmake);
-            // Change SHARED to STATIC in the add_library call
+            // Replace the if/else/endif block around add_library with just STATIC
             $content = preg_replace(
-                '/add_library\(vulkan\s+SHARED\b/',
-                'add_library(vulkan STATIC',
+                '/if\s*\(\s*APPLE_STATIC_LOADER\s*\)\s*\n\s*add_library\(vulkan\s+STATIC\).*?else\(\)\s*\n\s*add_library\(vulkan\s+SHARED\)\s*\n\s*endif\(\)/s',
+                'add_library(vulkan STATIC)',
                 $content
             );
-            // Remove the APPLE_STATIC_LOADER return() that skips install
+            // Remove the APPLE_STATIC_LOADER return() block that skips install
             $content = preg_replace(
-                '/if\s*\(\s*APPLE_STATIC_LOADER\s*\).*?return\(\).*?endif\(\)/s',
-                '# static build: removed APPLE_STATIC_LOADER return()',
+                '/if\s*\(\s*APPLE_STATIC_LOADER\s*\)\s*\n.*?return\(\)\s*\n\s*endif\(\)/s',
+                '# static build: install is not skipped',
                 $content
             );
             file_put_contents($loaderCmake, $content);

@@ -90,10 +90,10 @@ class vio extends Extension
             if (file_exists($configW32)) {
                 $w32Content = file_get_contents($configW32);
                 if ($this->builder->getExt('glfw') !== null) {
-                    $w32Content = preg_replace('/^\s*ARG_WITH\("glfw"[^;]*;\s*$/m', '// removed: ARG_WITH("glfw") — provided by ext/glfw', $w32Content);
+                    $w32Content = preg_replace('/^\s*ARG_WITH\("glfw"[^;]*;\s*\n/m', '', $w32Content);
                 }
                 if ($this->builder->getExt('vulkan') !== null) {
-                    $w32Content = preg_replace('/^\s*ARG_WITH\("vulkan"[^;]*;\s*$/m', '// removed: ARG_WITH("vulkan") — provided by ext/vulkan', $w32Content);
+                    $w32Content = preg_replace('/^\s*ARG_WITH\("vulkan"[^;]*;\s*\n/m', '', $w32Content);
                 }
                 file_put_contents($configW32, $w32Content);
             }
