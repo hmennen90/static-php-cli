@@ -48,16 +48,39 @@ class vio extends Extension
 
         $hasGlfwExt = $this->builder->getExt('glfw') !== null;
 
+        // Patch php-glfw's fontstash.h to make stb_truetype symbols static.
+        // Without this, nanovg.c compiles stb_truetype with STBTT_DEF=extern and
+        // custom allocator fons__tmpalloc. In a static build, the linker resolves
+        // vio's stbtt_PackBegin calls to php-glfw's version, which dereferences
+        // the alloc_context pointer (NULL from vio) causing a SIGSEGV crash.
+        if ($hasGlfwExt) {
+            $fontstash = SOURCE_PATH . '/ext-glfw/vendor/nanovg/src/fontstash.h';
+            if (file_exists($fontstash)) {
+                FileSystem::replaceFileStr(
+                    $fontstash,
+                    "#define STB_TRUETYPE_IMPLEMENTATION\n",
+                    "#define STB_TRUETYPE_IMPLEMENTATION\n#define STBTT_STATIC\n"
+                );
+            }
+        }
+
         // Remove vio's bundled vendor sources that duplicate php-glfw's when both
-        // extensions are built together. php-glfw compiles glad, stb, and miniaudio
-        // inline in its own .c files (phpglfw_texture.c, phpglfw_audio.c, etc.),
-        // so vio's separate _impl.c files cause duplicate symbols on Unix.
+        // extensions are built together. php-glfw compiles glad, stb_image, and
+        // miniaudio inline in its own .c files (phpglfw_texture.c, phpglfw_audio.c,
+        // etc.), so vio's separate _impl.c files cause duplicate symbols on Unix.
         // Windows MSVC handles duplicate symbols without error, so skip there.
+        //
+        // IMPORTANT: stb_truetype_impl.c must NOT be removed. php-glfw's
+        // stb_truetype uses fons__tmpalloc (fontstash scratch buffer) instead of
+        // malloc, so vio cannot share php-glfw's stbtt_PackBegin - calling it
+        // with alloc_context=NULL causes a NULL-pointer dereference crash.
+        // php-glfw's stb_truetype symbols are made static via STBTT_STATIC in
+        // fontstash.h, so no duplicate symbol conflict occurs.
         if ($hasGlfwExt && file_exists($configM4)) {
             $m4Content = file_get_contents($configM4);
-            // Use regex to remove vendor/* lines from PHP_NEW_EXTENSION source list.
+            // Remove vendor/* lines EXCEPT stb_truetype_impl.c from PHP_NEW_EXTENSION.
             // Matches: " \<newline><whitespace>vendor/path" - whitespace-agnostic.
-            $m4Content = preg_replace('/ \\\\\n\s*vendor\/[^,\s]+/', '', $m4Content);
+            $m4Content = preg_replace('/ \\\\\n\s*vendor\/(?!stb\/stb_truetype_impl\.c)[^,\s]+/', '', $m4Content);
             file_put_contents($configM4, $m4Content);
         }
 
