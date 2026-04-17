@@ -54,7 +54,9 @@ class vio extends Extension
         // vio's stbtt_PackBegin calls to php-glfw's version, which dereferences
         // the alloc_context pointer (NULL from vio) causing a SIGSEGV crash.
         if ($hasGlfwExt) {
-            $fontstash = SOURCE_PATH . '/ext-glfw/vendor/nanovg/src/fontstash.h';
+            // glfw's patchBeforeBuildconf copies sources to php-src/ext/glfw/,
+            // so we must patch the copy, not the original in ext-glfw/.
+            $fontstash = SOURCE_PATH . '/php-src/ext/glfw/vendor/nanovg/src/fontstash.h';
             if (file_exists($fontstash)) {
                 FileSystem::replaceFileStr(
                     $fontstash,
