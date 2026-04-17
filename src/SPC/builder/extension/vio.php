@@ -274,11 +274,12 @@ class vio extends Extension
         $args = '--enable-vio --with-glslang --with-spirv-cross';
         $args .= ' --with-d3d11 --with-d3d12';
 
-        // Only pass --with-glfw if the glfw PHP extension is NOT present,
-        // to avoid duplicate/conflicting ARG registrations on the command line.
-        if ($this->builder->getExt('glfw') === null) {
-            $args .= ' --with-glfw';
-        }
+        // Always pass --with-glfw so vio gets HAVE_GLFW for windowing and
+        // the OpenGL backend. When the glfw PHP extension is also present,
+        // patchBeforeBuildconf removes vio's ARG_WITH("glfw") to avoid
+        // duplicate registration - the glfw extension's ARG_ENABLE then
+        // handles it instead.
+        $args .= ' --with-glfw';
 
         // Only pass --with-vulkan if the vulkan PHP extension is NOT present.
         if ($this->builder->getExt('vulkan') === null && $this->builder->getLib('vulkan-loader') !== null) {
