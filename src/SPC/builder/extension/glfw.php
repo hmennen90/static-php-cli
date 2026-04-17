@@ -60,6 +60,6 @@ class glfw extends Extension
 
     public function getWindowsConfigureArg(bool $shared = false): string
     {
-        return '--enable-glfw=static';
+        return '--enable-glfw';
     }
 }

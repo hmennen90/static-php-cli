@@ -47,31 +47,56 @@ class vio extends Extension
         }
 
         // Remove vio's bundled vendor libs that duplicate php-glfw's (glad, stb, miniaudio)
-        // Both config.m4 and config.w32 list these; removing prevents LNK2005 on Windows
-        // and potential issues on Unix.
-        if (file_exists($configM4)) {
-            FileSystem::replaceFileStr(
-                $configM4,
-                " \\\n    vendor/glad/src/glad.c" .
-                " \\\n    vendor/stb/stb_image_impl.c" .
-                " \\\n    vendor/stb/stb_truetype_impl.c" .
-                " \\\n    vendor/stb/stb_image_write_impl.c" .
-                " \\\n    vendor/miniaudio/miniaudio_impl.c,",
-                ','
-            );
+        // Only do this when the glfw PHP extension is also being built, since it provides
+        // the same symbols. Without glfw, vio needs its own vendor implementations.
+        $hasGlfwExt = $this->builder->getExt('glfw') !== null;
+
+        if ($hasGlfwExt) {
+            if (file_exists($configM4)) {
+                FileSystem::replaceFileStr(
+                    $configM4,
+                    " \\\n    vendor/glad/src/glad.c" .
+                    " \\\n    vendor/stb/stb_image_impl.c" .
+                    " \\\n    vendor/stb/stb_truetype_impl.c" .
+                    " \\\n    vendor/stb/stb_image_write_impl.c" .
+                    " \\\n    vendor/miniaudio/miniaudio_impl.c,",
+                    ','
+                );
+            }
+            $configW32 = SOURCE_PATH . '/php-src/ext/vio/config.w32';
+            if (file_exists($configW32)) {
+                FileSystem::replaceFileStr(
+                    $configW32,
+                    "\" +\n" .
+                    "        \"vendor\\\\glad\\\\src\\\\glad.c \" +\n" .
+                    "        \"vendor\\\\stb\\\\stb_image_impl.c \" +\n" .
+                    "        \"vendor\\\\stb\\\\stb_truetype_impl.c \" +\n" .
+                    "        \"vendor\\\\stb\\\\stb_image_write_impl.c \" +\n" .
+                    "        \"vendor\\\\miniaudio\\\\miniaudio_impl.c\";",
+                    '";'
+                );
+            }
         }
-        $configW32 = SOURCE_PATH . '/php-src/ext/vio/config.w32';
-        if (file_exists($configW32)) {
-            FileSystem::replaceFileStr(
-                $configW32,
-                "\" +\n" .
-                "        \"vendor\\\\glad\\\\src\\\\glad.c \" +\n" .
-                "        \"vendor\\\\stb\\\\stb_image_impl.c \" +\n" .
-                "        \"vendor\\\\stb\\\\stb_truetype_impl.c \" +\n" .
-                "        \"vendor\\\\stb\\\\stb_image_write_impl.c \" +\n" .
-                '        "vendor\\\miniaudio\\\miniaudio_impl.c";',
-                '";'
-            );
+
+        // On Windows, VIO's config.w32 registers ARG_WITH("glfw") and ARG_WITH("vulkan").
+        // If the standalone glfw/vulkan PHP extensions are also present, they register
+        // ARG_ENABLE("glfw") / ARG_WITH("vulkan") for the same option names.
+        // PHP's buildconf hoists ALL ARG declarations, creating duplicate entries in
+        // configure_args[] that can cause --enable-glfw and --with-vulkan to be
+        // silently ignored. Remove VIO's conflicting ARG declarations when the
+        // standalone extensions handle them.
+        if (PHP_OS_FAMILY === 'Windows') {
+            $configW32 = SOURCE_PATH . '/php-src/ext/vio/config.w32';
+            if (file_exists($configW32)) {
+                $w32Content = file_get_contents($configW32);
+                if ($this->builder->getExt('glfw') !== null) {
+                    $w32Content = preg_replace('/^\s*ARG_WITH\("glfw"[^;]*;\s*$/m', '// removed: ARG_WITH("glfw") — provided by ext/glfw', $w32Content);
+                }
+                if ($this->builder->getExt('vulkan') !== null) {
+                    $w32Content = preg_replace('/^\s*ARG_WITH\("vulkan"[^;]*;\s*$/m', '// removed: ARG_WITH("vulkan") — provided by ext/vulkan', $w32Content);
+                }
+                file_put_contents($configW32, $w32Content);
+            }
         }
 
         // Metal: macOS only — compile .m as .c with ObjC flags injected later.
@@ -199,12 +224,20 @@ class vio extends Extension
 
     public function getWindowsConfigureArg(bool $shared = false): string
     {
-        $args = '--enable-vio --with-glfw --with-glslang --with-spirv-cross';
+        $args = '--enable-vio --with-glslang --with-spirv-cross';
         $args .= ' --with-d3d11 --with-d3d12';
 
-        if ($this->builder->getLib('vulkan-loader') !== null) {
+        // Only pass --with-glfw if the glfw PHP extension is NOT present,
+        // to avoid duplicate/conflicting ARG registrations on the command line.
+        if ($this->builder->getExt('glfw') === null) {
+            $args .= ' --with-glfw';
+        }
+
+        // Only pass --with-vulkan if the vulkan PHP extension is NOT present.
+        if ($this->builder->getExt('vulkan') === null && $this->builder->getLib('vulkan-loader') !== null) {
             $args .= ' --with-vulkan';
         }
+
         if ($this->builder->getLib('ffmpeg') !== null) {
             $args .= ' --with-ffmpeg';
         }
