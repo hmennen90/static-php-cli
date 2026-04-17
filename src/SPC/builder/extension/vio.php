@@ -51,17 +51,14 @@ class vio extends Extension
         // Remove vio's bundled vendor sources that duplicate php-glfw's when both
         // extensions are built together. php-glfw compiles glad, stb, and miniaudio
         // inline in its own .c files (phpglfw_texture.c, phpglfw_audio.c, etc.),
-        // so vio's separate _impl.c files cause duplicate symbols.
+        // so vio's separate _impl.c files cause duplicate symbols on Unix.
+        // Windows MSVC handles duplicate symbols without error, so skip there.
         if ($hasGlfwExt && file_exists($configM4)) {
-            FileSystem::replaceFileStr(
-                $configM4,
-                " \\\n  vendor/glad/src/glad.c" .
-                " \\\n  vendor/stb/stb_image_impl.c" .
-                " \\\n  vendor/stb/stb_truetype_impl.c" .
-                " \\\n  vendor/stb/stb_image_write_impl.c" .
-                " \\\n  vendor/miniaudio/miniaudio_impl.c",
-                ''
-            );
+            $m4Content = file_get_contents($configM4);
+            // Use regex to remove vendor/* lines from PHP_NEW_EXTENSION source list.
+            // Matches: " \<newline><whitespace>vendor/path" - whitespace-agnostic.
+            $m4Content = preg_replace('/ \\\\\n\s*vendor\/[^,\s]+/', '', $m4Content);
+            file_put_contents($configM4, $m4Content);
         }
 
         // Patch config.w32: normalize CRLF to LF for reliable string matching,
@@ -79,19 +76,6 @@ class vio extends Extension
                     "        \"src\\\\backends\\\\vulkan\\\\vio_vulkan.c \" +\n",
                     "        \"src\\\\backends\\\\vulkan\\\\vio_vulkan.c \" +\n" .
                     "        \"src\\\\backends\\\\vulkan\\\\vio_vma_wrapper.cpp \" +\n",
-                    $w32Content
-                );
-            }
-
-            // Remove vendor sources that duplicate php-glfw's
-            if ($hasGlfwExt) {
-                $w32Content = str_replace(
-                    "        \"vendor\\\\glad\\\\src\\\\glad.c \" +\n" .
-                    "        \"vendor\\\\stb\\\\stb_image_impl.c \" +\n" .
-                    "        \"vendor\\\\stb\\\\stb_truetype_impl.c \" +\n" .
-                    "        \"vendor\\\\stb\\\\stb_image_write_impl.c \" +\n" .
-                    "        \"vendor\\\\miniaudio\\\\miniaudio_impl.c\"",
-                    '""',
                     $w32Content
                 );
             }
