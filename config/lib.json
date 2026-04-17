@@ -109,8 +109,7 @@
             "krb5"
         ],
         "lib-suggests-windows": [
-            "brotli",
-            "zstd"
+            "brotli"
         ],
         "frameworks": [
             "CoreFoundation",
@@ -143,9 +142,7 @@
             "zlib"
         ],
         "lib-suggests": [
-            "libpng",
-            "bzip2",
-            "brotli"
+            "libpng"
         ]
     },
     "gettext": {
@@ -370,6 +367,9 @@
         "static-libs-unix": [
             "libaom.a"
         ],
+        "static-libs-windows": [
+            "aom.lib"
+        ],
         "cpp-library": true
     },
     "libargon2": {
@@ -508,7 +508,7 @@
         "static-libs-windows": [
             "libjpeg_a.lib"
         ],
-        "lib-suggests-windows": [
+        "lib-depends": [
             "zlib"
         ]
     },
@@ -541,6 +541,18 @@
         "headers": [
             "maxminddb.h",
             "maxminddb_config.h"
+        ]
+    },
+    "libmpdec": {
+        "source": "libmpdec",
+        "static-libs-unix": [
+            "libmpdec.a"
+        ],
+        "static-libs-windows": [
+            "libmpdec_a.lib"
+        ],
+        "headers": [
+            "mpdecimal.h"
         ]
     },
     "libmemcached": {
@@ -777,7 +789,6 @@
             "xz"
         ],
         "lib-suggests-windows": [
-            "zstd",
             "openssl"
         ]
     },
@@ -1014,6 +1025,9 @@
         ],
         "headers": [
             "wtr/watcher-c.h"
+        ],
+        "frameworks": [
+            "CoreServices"
         ]
     },
     "xz": {

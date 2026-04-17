@@ -63,7 +63,8 @@
         ],
         "ext-depends-windows": [
             "zlib",
-            "openssl"
+            "openssl",
+            "brotli"
         ]
     },
     "dba": {
@@ -72,6 +73,19 @@
         "lib-suggests": [
             "qdbm"
         ]
+    },
+    "decimal": {
+        "type": "external",
+        "source": "ext-decimal",
+        "arg-type": "custom",
+        "lib-depends": [
+            "libmpdec"
+        ]
+    },
+    "deepclone": {
+        "type": "external",
+        "source": "deepclone",
+        "arg-type": "enable"
     },
     "dio": {
         "support": {
