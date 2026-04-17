@@ -117,13 +117,10 @@ class vio extends Extension
                 );
             }
 
-            // Remove ARG_WITH declarations that conflict with standalone extensions.
-            // VIO's ARG_WITH("glfw") overrides ext/glfw's ARG_ENABLE("glfw") when
-            // --disable-all is active, because ARG_WITH doesn't see --with-glfw
-            // and resets PHP_GLFW to "no".
-            if ($this->builder->getExt('glfw') !== null) {
-                $w32Content = preg_replace('/^\s*ARG_WITH\("glfw"[^;]*;\s*\n/m', '', $w32Content);
-            }
+            // VIO's ARG_WITH("glfw") is kept even when the glfw PHP extension is
+            // present: getWindowsConfigureArg passes --with-glfw so the handler
+            // must exist. Both ARG_WITH("glfw") (vio) and ARG_ENABLE("glfw")
+            // (glfw ext) set PHP_GLFW - the command-line value wins.
             if ($this->builder->getExt('vulkan') !== null) {
                 $w32Content = preg_replace('/^\s*ARG_WITH\("vulkan"[^;]*;\s*\n/m', '', $w32Content);
             }
