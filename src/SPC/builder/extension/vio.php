@@ -48,13 +48,18 @@ class vio extends Extension
 
         $hasGlfwExt = $this->builder->getExt('glfw') !== null;
 
-        // Remove only glad.c from vio's vendor sources when php-glfw is present,
-        // since both extensions bundle glad and it causes duplicate symbols.
-        // stb and miniaudio are NOT provided by php-glfw, so keep those.
+        // Remove vio's bundled vendor sources that duplicate php-glfw's when both
+        // extensions are built together. php-glfw compiles glad, stb, and miniaudio
+        // inline in its own .c files (phpglfw_texture.c, phpglfw_audio.c, etc.),
+        // so vio's separate _impl.c files cause duplicate symbols.
         if ($hasGlfwExt && file_exists($configM4)) {
             FileSystem::replaceFileStr(
                 $configM4,
-                " \\\n  vendor/glad/src/glad.c",
+                " \\\n  vendor/glad/src/glad.c" .
+                " \\\n  vendor/stb/stb_image_impl.c" .
+                " \\\n  vendor/stb/stb_truetype_impl.c" .
+                " \\\n  vendor/stb/stb_image_write_impl.c" .
+                " \\\n  vendor/miniaudio/miniaudio_impl.c",
                 ''
             );
         }
@@ -78,11 +83,15 @@ class vio extends Extension
                 );
             }
 
-            // Remove glad.c from vio's vendor sources (php-glfw provides it)
+            // Remove vendor sources that duplicate php-glfw's
             if ($hasGlfwExt) {
                 $w32Content = str_replace(
-                    "        \"vendor\\\\glad\\\\src\\\\glad.c \" +\n",
-                    '',
+                    "        \"vendor\\\\glad\\\\src\\\\glad.c \" +\n" .
+                    "        \"vendor\\\\stb\\\\stb_image_impl.c \" +\n" .
+                    "        \"vendor\\\\stb\\\\stb_truetype_impl.c \" +\n" .
+                    "        \"vendor\\\\stb\\\\stb_image_write_impl.c \" +\n" .
+                    "        \"vendor\\\\miniaudio\\\\miniaudio_impl.c\"",
+                    '""',
                     $w32Content
                 );
             }
