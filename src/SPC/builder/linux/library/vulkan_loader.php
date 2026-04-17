@@ -12,20 +12,28 @@ class vulkan_loader extends LinuxLibraryBase
 
     protected function build(): void
     {
-        // Vulkan-Loader uses APPLE_STATIC_LOADER on macOS to build a static lib.
-        // Despite the name, this flag works on Linux too - it selects the STATIC
-        // code path in the if/else/endif block, preserving all target definitions
-        // (like loader_specific_options). We patch the return() block that skips
-        // the install step.
+        // Vulkan-Loader defaults to SHARED on Linux. Patch to build STATIC instead.
+        // We only change the library type in the else() branch (non-Apple path)
+        // and remove the install(EXPORT) that references targets not in the export set.
         $loaderCmake = $this->source_dir . '/loader/CMakeLists.txt';
         if (file_exists($loaderCmake)) {
             $content = file_get_contents($loaderCmake);
-            // Remove the APPLE_STATIC_LOADER return() block that skips install
-            $content = preg_replace(
-                '/if\s*\(\s*APPLE_STATIC_LOADER\s*\)\s*\n.*?return\(\)\s*\n\s*endif\(\)/s',
-                '# static build: install is not skipped',
+
+            // The non-Apple code path has: add_library(vulkan SHARED ...)
+            // Change SHARED to STATIC for static linking.
+            $content = str_replace(
+                'add_library(vulkan SHARED',
+                'add_library(vulkan STATIC',
                 $content
             );
+
+            // Remove install(EXPORT) which fails with static builds
+            $content = preg_replace(
+                '/install\(EXPORT\s+VulkanLoaderConfig[^)]*\)/',
+                '# static: export removed',
+                $content
+            );
+
             file_put_contents($loaderCmake, $content);
         }
 
@@ -34,7 +42,6 @@ class vulkan_loader extends LinuxLibraryBase
                 '-DBUILD_SHARED_LIBS=OFF',
                 '-DBUILD_TESTS=OFF',
                 '-DUPDATE_DEPS=OFF',
-                '-DAPPLE_STATIC_LOADER=ON',
                 '-DBUILD_WSI_XCB_SUPPORT=OFF',
                 '-DBUILD_WSI_XLIB_SUPPORT=OFF',
                 '-DBUILD_WSI_WAYLAND_SUPPORT=OFF',

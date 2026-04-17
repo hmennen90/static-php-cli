@@ -112,7 +112,22 @@ class vio extends Extension
             file_put_contents($configW32, $w32Content);
         }
 
-        // Metal: macOS only — compile .m as .c with ObjC flags injected later.
+        // VMA wrapper: on Windows, PHP uses config.w32.h not config.h, and HAVE_VULKAN
+        // is defined via /D compiler flags. Patch the include to be platform-aware.
+        $vmaWrapper = SOURCE_PATH . '/php-src/ext/vio/src/backends/vulkan/vio_vma_wrapper.cpp';
+        if (file_exists($vmaWrapper)) {
+            $vmaContent = file_get_contents($vmaWrapper);
+            if (str_contains($vmaContent, '#include "config.h"')) {
+                $vmaContent = str_replace(
+                    '#include "config.h"',
+                    "#ifdef _WIN32\n#include \"config.w32.h\"\n#else\n#include \"config.h\"\n#endif",
+                    $vmaContent
+                );
+                file_put_contents($vmaWrapper, $vmaContent);
+            }
+        }
+
+        // Metal: macOS only - compile .m as .c with ObjC flags injected later.
         if (PHP_OS_FAMILY === 'Darwin') {
             $metalSrc = SOURCE_PATH . '/php-src/ext/vio/src/backends/metal/vio_metal.m';
             $metalC = SOURCE_PATH . '/php-src/ext/vio/src/backends/metal/vio_metal.c';
