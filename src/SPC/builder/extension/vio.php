@@ -46,29 +46,12 @@ class vio extends Extension
             file_put_contents($makefileFrag, $content);
         }
 
-        // Remove vio's bundled vendor libs that duplicate php-glfw's (glad, stb, miniaudio)
-        // Only do this when the glfw PHP extension is also being built, since it provides
-        // the same symbols. Without glfw, vio needs its own vendor implementations.
         $hasGlfwExt = $this->builder->getExt('glfw') !== null;
 
-        if ($hasGlfwExt) {
-            if (file_exists($configM4)) {
-                FileSystem::replaceFileStr(
-                    $configM4,
-                    " \\\n    vendor/glad/src/glad.c" .
-                    " \\\n    vendor/stb/stb_image_impl.c" .
-                    " \\\n    vendor/stb/stb_truetype_impl.c" .
-                    " \\\n    vendor/stb/stb_image_write_impl.c" .
-                    " \\\n    vendor/miniaudio/miniaudio_impl.c,",
-                    ','
-                );
-            }
-        }
-
         // Patch config.w32: normalize CRLF to LF for reliable string matching,
-        // add VMA C++ wrapper, remove duplicate vendor sources, and remove
-        // conflicting ARG_WITH declarations that prevent the standalone
-        // glfw/vulkan PHP extensions from being enabled by configure.
+        // add VMA C++ wrapper, and remove conflicting ARG_WITH declarations
+        // that prevent the standalone glfw/vulkan PHP extensions from being
+        // enabled by configure.
         $configW32 = SOURCE_PATH . '/php-src/ext/vio/config.w32';
         if (file_exists($configW32)) {
             $w32Content = file_get_contents($configW32);
@@ -80,20 +63,6 @@ class vio extends Extension
                     "        \"src\\\\backends\\\\vulkan\\\\vio_vulkan.c \" +\n",
                     "        \"src\\\\backends\\\\vulkan\\\\vio_vulkan.c \" +\n" .
                     "        \"src\\\\backends\\\\vulkan\\\\vio_vma_wrapper.cpp \" +\n",
-                    $w32Content
-                );
-            }
-
-            // Remove vendor sources that duplicate php-glfw's
-            if ($hasGlfwExt) {
-                $w32Content = str_replace(
-                    "\" +\n" .
-                    "        \"vendor\\\\glad\\\\src\\\\glad.c \" +\n" .
-                    "        \"vendor\\\\stb\\\\stb_image_impl.c \" +\n" .
-                    "        \"vendor\\\\stb\\\\stb_truetype_impl.c \" +\n" .
-                    "        \"vendor\\\\stb\\\\stb_image_write_impl.c \" +\n" .
-                    "        \"vendor\\\\miniaudio\\\\miniaudio_impl.c\";",
-                    '";',
                     $w32Content
                 );
             }
