@@ -48,6 +48,17 @@ class vio extends Extension
 
         $hasGlfwExt = $this->builder->getExt('glfw') !== null;
 
+        // Remove only glad.c from vio's vendor sources when php-glfw is present,
+        // since both extensions bundle glad and it causes duplicate symbols.
+        // stb and miniaudio are NOT provided by php-glfw, so keep those.
+        if ($hasGlfwExt && file_exists($configM4)) {
+            FileSystem::replaceFileStr(
+                $configM4,
+                " \\\n  vendor/glad/src/glad.c",
+                ''
+            );
+        }
+
         // Patch config.w32: normalize CRLF to LF for reliable string matching,
         // add VMA C++ wrapper, and remove conflicting ARG_WITH declarations
         // that prevent the standalone glfw/vulkan PHP extensions from being
@@ -63,6 +74,15 @@ class vio extends Extension
                     "        \"src\\\\backends\\\\vulkan\\\\vio_vulkan.c \" +\n",
                     "        \"src\\\\backends\\\\vulkan\\\\vio_vulkan.c \" +\n" .
                     "        \"src\\\\backends\\\\vulkan\\\\vio_vma_wrapper.cpp \" +\n",
+                    $w32Content
+                );
+            }
+
+            // Remove glad.c from vio's vendor sources (php-glfw provides it)
+            if ($hasGlfwExt) {
+                $w32Content = str_replace(
+                    "        \"vendor\\\\glad\\\\src\\\\glad.c \" +\n",
+                    '',
                     $w32Content
                 );
             }
