@@ -63,40 +63,53 @@ class vio extends Extension
                     ','
                 );
             }
-            $configW32 = SOURCE_PATH . '/php-src/ext/vio/config.w32';
-            if (file_exists($configW32)) {
-                FileSystem::replaceFileStr(
-                    $configW32,
+        }
+
+        // Patch config.w32: normalize CRLF to LF for reliable string matching,
+        // add VMA C++ wrapper, remove duplicate vendor sources, and remove
+        // conflicting ARG_WITH declarations that prevent the standalone
+        // glfw/vulkan PHP extensions from being enabled by configure.
+        $configW32 = SOURCE_PATH . '/php-src/ext/vio/config.w32';
+        if (file_exists($configW32)) {
+            $w32Content = file_get_contents($configW32);
+            $w32Content = str_replace("\r\n", "\n", $w32Content);
+
+            // VMA C++ wrapper: add to source list for Vulkan support
+            if ($this->builder->getLib('vulkan-headers') !== null) {
+                $w32Content = str_replace(
+                    "        \"src\\\\backends\\\\vulkan\\\\vio_vulkan.c \" +\n",
+                    "        \"src\\\\backends\\\\vulkan\\\\vio_vulkan.c \" +\n" .
+                    "        \"src\\\\backends\\\\vulkan\\\\vio_vma_wrapper.cpp \" +\n",
+                    $w32Content
+                );
+            }
+
+            // Remove vendor sources that duplicate php-glfw's
+            if ($hasGlfwExt) {
+                $w32Content = str_replace(
                     "\" +\n" .
                     "        \"vendor\\\\glad\\\\src\\\\glad.c \" +\n" .
                     "        \"vendor\\\\stb\\\\stb_image_impl.c \" +\n" .
                     "        \"vendor\\\\stb\\\\stb_truetype_impl.c \" +\n" .
                     "        \"vendor\\\\stb\\\\stb_image_write_impl.c \" +\n" .
                     "        \"vendor\\\\miniaudio\\\\miniaudio_impl.c\";",
-                    '";'
+                    '";',
+                    $w32Content
                 );
             }
-        }
 
-        // On Windows, VIO's config.w32 registers ARG_WITH("glfw") and ARG_WITH("vulkan").
-        // If the standalone glfw/vulkan PHP extensions are also present, they register
-        // ARG_ENABLE("glfw") / ARG_WITH("vulkan") for the same option names.
-        // PHP's buildconf hoists ALL ARG declarations, creating duplicate entries in
-        // configure_args[] that can cause --enable-glfw and --with-vulkan to be
-        // silently ignored. Remove VIO's conflicting ARG declarations when the
-        // standalone extensions handle them.
-        if (PHP_OS_FAMILY === 'Windows') {
-            $configW32 = SOURCE_PATH . '/php-src/ext/vio/config.w32';
-            if (file_exists($configW32)) {
-                $w32Content = file_get_contents($configW32);
-                if ($this->builder->getExt('glfw') !== null) {
-                    $w32Content = preg_replace('/^\s*ARG_WITH\("glfw"[^;]*;\s*\n/m', '', $w32Content);
-                }
-                if ($this->builder->getExt('vulkan') !== null) {
-                    $w32Content = preg_replace('/^\s*ARG_WITH\("vulkan"[^;]*;\s*\n/m', '', $w32Content);
-                }
-                file_put_contents($configW32, $w32Content);
+            // Remove ARG_WITH declarations that conflict with standalone extensions.
+            // VIO's ARG_WITH("glfw") overrides ext/glfw's ARG_ENABLE("glfw") when
+            // --disable-all is active, because ARG_WITH doesn't see --with-glfw
+            // and resets PHP_GLFW to "no".
+            if ($this->builder->getExt('glfw') !== null) {
+                $w32Content = preg_replace('/^\s*ARG_WITH\("glfw"[^;]*;\s*\n/m', '', $w32Content);
             }
+            if ($this->builder->getExt('vulkan') !== null) {
+                $w32Content = preg_replace('/^\s*ARG_WITH\("vulkan"[^;]*;\s*\n/m', '', $w32Content);
+            }
+
+            file_put_contents($configW32, $w32Content);
         }
 
         // Metal: macOS only — compile .m as .c with ObjC flags injected later.
