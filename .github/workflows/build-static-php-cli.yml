@@ -7,11 +7,10 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
-  build:
+  build-php84:
     strategy:
       fail-fast: false
       matrix:
-        php-version: ['8.4', '8.5']
         os:
           - name: macos-aarch64
             runner: macos-15
@@ -41,10 +40,9 @@ jobs:
             extensions: "glfw,mbstring,zip,phar,steamworks"
             steam: true
         exclude:
-          # Steam on Linux ARM64 not needed (Steam runs x86_64 only)
           - os: { name: linux-aarch64 }
             variant: { name: steam }
-    name: "${{ matrix.variant.name }} / ${{ matrix.os.name }} / php${{ matrix.php-version }}"
+    name: "${{ matrix.variant.name }} / ${{ matrix.os.name }} / php8.4"
     runs-on: ${{ matrix.os.runner }}
     timeout-minutes: 120
     steps:
@@ -59,7 +57,6 @@ jobs:
           extensions: curl, openssl, mbstring
           ini-values: memory_limit=-1
 
-      # ── Prepare Steamworks SDK (all platforms) ──
       - name: "Prepare Steamworks SDK"
         if: matrix.variant.steam
         shell: bash
@@ -70,20 +67,18 @@ jobs:
           cp -r /tmp/php-steamworks/sdk/public source/steamworks-sdk/public || true
           rm -rf /tmp/php-steamworks
 
-      # ── macOS ──
       - name: "Download & Build (macOS)"
         if: matrix.os.platform == 'macos'
         run: |
           composer install --no-dev --classmap-authoritative
           ./bin/spc doctor --auto-fix || true
           ./bin/spc download \
-            --with-php=${{ matrix.php-version }} \
+            --with-php=8.4 \
             --for-extensions=${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} \
             --ignore-cache-sources=php-src \
             --prefer-pre-built
           ./bin/spc build ${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} --build-micro -I "memory_limit=-1" --without-micro-ext-test
 
-      # ── Linux (Alpine for base, glibc/CentOS for steam since libsteam_api.so requires glibc) ──
       - name: "Download & Build (Linux)"
         if: matrix.os.platform == 'linux'
         run: |
@@ -93,13 +88,12 @@ jobs:
             SPC_CMD="./bin/spc-alpine-docker"
           fi
           $SPC_CMD download \
-            --with-php=${{ matrix.php-version }} \
+            --with-php=8.4 \
             --for-extensions=${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} \
             --ignore-cache-sources=php-src \
             --prefer-pre-built
           $SPC_CMD build ${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} --build-micro -I "memory_limit=-1" --without-micro-ext-test
 
-      # ── Windows ──
       - name: "Install Composer deps (Windows)"
         if: matrix.os.platform == 'windows'
         run: composer install --no-dev --classmap-authoritative
@@ -108,22 +102,20 @@ jobs:
         if: matrix.os.platform == 'windows'
         run: |
           ./bin/spc doctor
-          ./bin/spc download --with-php="${{ matrix.php-version }}" --for-extensions="${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }}" --prefer-pre-built
+          ./bin/spc download --with-php="8.4" --for-extensions="${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }}" --prefer-pre-built
           ./bin/spc build "${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }}" --build-micro -I "memory_limit=-1" --without-micro-ext-test
 
-      # ── Upload logs on failure ──
       - name: "Upload build logs"
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: build-logs-${{ matrix.variant.name }}-${{ matrix.php-version }}-${{ matrix.os.name }}
+          name: build-logs-${{ matrix.variant.name }}-8.4-${{ matrix.os.name }}
           path: log/
 
-      # ── Upload artifacts ──
       - name: "Upload micro.sfx"
         uses: actions/upload-artifact@v4
         with:
-          name: micro-sfx-${{ matrix.variant.name }}-${{ matrix.php-version }}-${{ matrix.os.name }}
+          name: micro-sfx-${{ matrix.variant.name }}-8.4-${{ matrix.os.name }}
           path: |
             buildroot/bin/micro.sfx
             buildroot/bin/micro.sfx.exe
@@ -132,7 +124,7 @@ jobs:
         if: matrix.variant.steam
         uses: actions/upload-artifact@v4
         with:
-          name: libsteam-api-${{ matrix.os.name }}
+          name: libsteam-api-8.4-${{ matrix.os.name }}
           path: |
             buildroot/lib/libsteam_api.dylib
             buildroot/lib/libsteam_api.so
@@ -141,29 +133,154 @@ jobs:
       - name: "Upload licenses"
         uses: actions/upload-artifact@v4
         with:
-          name: licenses-${{ matrix.variant.name }}-${{ matrix.php-version }}-${{ matrix.os.name }}
+          name: licenses-${{ matrix.variant.name }}-8.4-${{ matrix.os.name }}
           path: buildroot/license/
 
-  # ── Create GitHub Release with all micro.sfx binaries ──
-  release:
-    name: "Release / php${{ matrix.php-version }}"
-    needs: build
-    if: always() && contains(needs.build.result, 'success')
-    runs-on: ubuntu-latest
+  build-php85:
     strategy:
+      fail-fast: false
       matrix:
-        php-version: ['8.4', '8.5']
+        os:
+          - name: macos-aarch64
+            runner: macos-15
+            platform: macos
+            gpu_extensions: ",vio,vulkan,metal"
+          - name: macos-x86_64
+            runner: macos-15-intel
+            platform: macos
+            gpu_extensions: ",vio,vulkan,metal"
+          - name: linux-x86_64
+            runner: ubuntu-latest
+            platform: linux
+            gpu_extensions: ",vio,vulkan"
+          - name: linux-aarch64
+            runner: ubuntu-24.04-arm
+            platform: linux
+            gpu_extensions: ",vio,vulkan"
+          - name: windows-x86_64
+            runner: windows-latest
+            platform: windows
+            gpu_extensions: ",vio,vulkan"
+        variant:
+          - name: base
+            extensions: "glfw,mbstring,zip,phar"
+            steam: false
+          - name: steam
+            extensions: "glfw,mbstring,zip,phar,steamworks"
+            steam: true
+        exclude:
+          - os: { name: linux-aarch64 }
+            variant: { name: steam }
+    name: "${{ matrix.variant.name }} / ${{ matrix.os.name }} / php8.5"
+    runs-on: ${{ matrix.os.runner }}
+    timeout-minutes: 120
     steps:
-      - name: "Download micro.sfx artifacts for PHP ${{ matrix.php-version }}"
+      - name: "Checkout"
+        uses: actions/checkout@v4
+
+      - name: "Setup PHP"
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.4
+          tools: composer
+          extensions: curl, openssl, mbstring
+          ini-values: memory_limit=-1
+
+      - name: "Prepare Steamworks SDK"
+        if: matrix.variant.steam
+        shell: bash
+        run: |
+          git clone --depth 1 https://${{ github.token }}@github.com/hmennen90/php-steamworks.git /tmp/php-steamworks
+          mkdir -p source/steamworks-sdk/redistributable_bin
+          cp -r /tmp/php-steamworks/sdk/redistributable_bin/* source/steamworks-sdk/redistributable_bin/
+          cp -r /tmp/php-steamworks/sdk/public source/steamworks-sdk/public || true
+          rm -rf /tmp/php-steamworks
+
+      - name: "Download & Build (macOS)"
+        if: matrix.os.platform == 'macos'
+        run: |
+          composer install --no-dev --classmap-authoritative
+          ./bin/spc doctor --auto-fix || true
+          ./bin/spc download \
+            --with-php=8.5 \
+            --for-extensions=${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} \
+            --ignore-cache-sources=php-src \
+            --prefer-pre-built
+          ./bin/spc build ${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} --build-micro -I "memory_limit=-1" --without-micro-ext-test
+
+      - name: "Download & Build (Linux)"
+        if: matrix.os.platform == 'linux'
+        run: |
+          if [ "${{ matrix.variant.steam }}" = "true" ]; then
+            SPC_CMD="./bin/spc-gnu-docker"
+          else
+            SPC_CMD="./bin/spc-alpine-docker"
+          fi
+          $SPC_CMD download \
+            --with-php=8.5 \
+            --for-extensions=${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} \
+            --ignore-cache-sources=php-src \
+            --prefer-pre-built
+          $SPC_CMD build ${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} --build-micro -I "memory_limit=-1" --without-micro-ext-test
+
+      - name: "Install Composer deps (Windows)"
+        if: matrix.os.platform == 'windows'
+        run: composer install --no-dev --classmap-authoritative
+
+      - name: "Download & Build (Windows)"
+        if: matrix.os.platform == 'windows'
+        run: |
+          ./bin/spc doctor
+          ./bin/spc download --with-php="8.5" --for-extensions="${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }}" --prefer-pre-built
+          ./bin/spc build "${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }}" --build-micro -I "memory_limit=-1" --without-micro-ext-test
+
+      - name: "Upload build logs"
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs-${{ matrix.variant.name }}-8.5-${{ matrix.os.name }}
+          path: log/
+
+      - name: "Upload micro.sfx"
+        uses: actions/upload-artifact@v4
+        with:
+          name: micro-sfx-${{ matrix.variant.name }}-8.5-${{ matrix.os.name }}
+          path: |
+            buildroot/bin/micro.sfx
+            buildroot/bin/micro.sfx.exe
+
+      - name: "Upload libsteam_api"
+        if: matrix.variant.steam
+        uses: actions/upload-artifact@v4
+        with:
+          name: libsteam-api-8.5-${{ matrix.os.name }}
+          path: |
+            buildroot/lib/libsteam_api.dylib
+            buildroot/lib/libsteam_api.so
+            buildroot/lib/steam_api64.dll
+
+      - name: "Upload licenses"
+        uses: actions/upload-artifact@v4
+        with:
+          name: licenses-${{ matrix.variant.name }}-8.5-${{ matrix.os.name }}
+          path: buildroot/license/
+
+  release-php84:
+    name: "Release / php8.4"
+    needs: build-php84
+    if: always() && needs.build-php84.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Download micro.sfx artifacts"
         uses: actions/download-artifact@v4
         with:
-          pattern: micro-sfx-*-${{ matrix.php-version }}-*
+          pattern: micro-sfx-*-8.4-*
           path: release-assets/
 
       - name: "Download libsteam artifacts"
         uses: actions/download-artifact@v4
         with:
-          pattern: libsteam-api-*
+          pattern: libsteam-api-8.4-*
           path: release-assets/
 
       - name: "Prepare release files"
@@ -181,8 +298,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="runtime-php${{ matrix.php-version }}"
-          TITLE="Game Runtime PHP ${{ matrix.php-version }}"
+          TAG="runtime-php8.4"
+          TITLE="Game Runtime PHP 8.4"
 
           # Delete existing release if it exists
           gh release delete "$TAG" -R ${{ github.repository }} --yes 2>/dev/null || true
@@ -193,7 +310,59 @@ jobs:
             --title "$TITLE" \
             --notes "Pre-built micro.sfx binaries for game distribution.
 
-          **PHP Version:** ${{ matrix.php-version }}
+          **PHP Version:** 8.4
+          **Extensions (base):** glfw, vio, vulkan, metal (macOS), mbstring, zip, phar
+          **Extensions (steam):** glfw, vio, vulkan, metal (macOS), mbstring, zip, phar, steamworks
+
+          Built by workflow run [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" \
+            release-files/*.zip
+
+  release-php85:
+    name: "Release / php8.5"
+    needs: build-php85
+    if: always() && needs.build-php85.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Download micro.sfx artifacts"
+        uses: actions/download-artifact@v4
+        with:
+          pattern: micro-sfx-*-8.5-*
+          path: release-assets/
+
+      - name: "Download libsteam artifacts"
+        uses: actions/download-artifact@v4
+        with:
+          pattern: libsteam-api-8.5-*
+          path: release-assets/
+
+      - name: "Prepare release files"
+        run: |
+          mkdir -p release-files
+          cd release-assets
+          for dir in */; do
+            name="${dir%/}"
+            cd "$name"
+            zip -r "../../release-files/${name}.zip" .
+            cd ..
+          done
+
+      - name: "Create or update release"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="runtime-php8.5"
+          TITLE="Game Runtime PHP 8.5"
+
+          # Delete existing release if it exists
+          gh release delete "$TAG" -R ${{ github.repository }} --yes 2>/dev/null || true
+
+          # Create new release
+          gh release create "$TAG" \
+            -R ${{ github.repository }} \
+            --title "$TITLE" \
+            --notes "Pre-built micro.sfx binaries for game distribution.
+
+          **PHP Version:** 8.5
           **Extensions (base):** glfw, vio, vulkan, metal (macOS), mbstring, zip, phar
           **Extensions (steam):** glfw, vio, vulkan, metal (macOS), mbstring, zip, phar, steamworks
 
