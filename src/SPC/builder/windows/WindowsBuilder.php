@@ -61,7 +61,7 @@ class WindowsBuilder extends BuilderBase
 
         SourcePatcher::patchBeforeBuildconf($this);
 
-        cmd()->cd(SOURCE_PATH . '\php-src')->exec("{$this->sdk_prefix} buildconf.bat");
+        cmd()->cd(SOURCE_PATH . '\php-src')->exec("{$this->sdk_prefix} " . SOURCE_PATH . '\php-src\buildconf.bat');
 
         SourcePatcher::patchBeforeConfigure($this);
 
@@ -86,7 +86,7 @@ class WindowsBuilder extends BuilderBase
 
         cmd()->cd(SOURCE_PATH . '\php-src')
             ->exec(
-                "{$this->sdk_prefix} configure.bat --task-args \"" .
+                "{$this->sdk_prefix} " . SOURCE_PATH . '\php-src\configure.bat --task-args "' .
                 '--disable-all ' .
                 '--with-php-build=' . BUILD_ROOT_PATH . ' ' .
                 '--with-extra-includes=' . BUILD_INCLUDE_PATH . ' ' .
@@ -159,7 +159,7 @@ class WindowsBuilder extends BuilderBase
         // add nmake wrapper
         FileSystem::writeFile(SOURCE_PATH . '\php-src\nmake_cli_wrapper.bat', "nmake /nologo {$debug_overrides}LIBS_CLI=\"ws2_32.lib shell32.lib {$extra_libs}\" EXTRA_LD_FLAGS_PROGRAM= %*");
 
-        cmd()->cd(SOURCE_PATH . '\php-src')->exec("{$this->sdk_prefix} nmake_cli_wrapper.bat --task-args php.exe");
+        cmd()->cd(SOURCE_PATH . '\php-src')->exec("{$this->sdk_prefix} " . SOURCE_PATH . '\php-src\nmake_cli_wrapper.bat --task-args php.exe');
 
         $this->deploySAPIBinary(BUILD_TARGET_CLI);
     }
@@ -184,7 +184,7 @@ class WindowsBuilder extends BuilderBase
         // add nmake wrapper
         FileSystem::writeFile(SOURCE_PATH . '\php-src\nmake_cgi_wrapper.bat', "nmake /nologo {$debug_overrides}LIBS_CGI=\"ws2_32.lib kernel32.lib advapi32.lib {$extra_libs}\" EXTRA_LD_FLAGS_PROGRAM= %*");
 
-        cmd()->cd(SOURCE_PATH . '\php-src')->exec("{$this->sdk_prefix} nmake_cgi_wrapper.bat --task-args php-cgi.exe");
+        cmd()->cd(SOURCE_PATH . '\php-src')->exec("{$this->sdk_prefix} " . SOURCE_PATH . '\php-src\nmake_cgi_wrapper.bat --task-args php-cgi.exe');
 
         $this->deploySAPIBinary(BUILD_TARGET_CGI);
     }
@@ -196,7 +196,7 @@ class WindowsBuilder extends BuilderBase
         FileSystem::writeFile(SOURCE_PATH . '\php-src\nmake_embed_wrapper.bat', 'nmake /nologo %*');
 
         cmd()->cd(SOURCE_PATH . '\php-src')
-            ->exec("{$this->sdk_prefix} nmake_embed_wrapper.bat --task-args php8embed.lib");
+            ->exec("{$this->sdk_prefix} " . SOURCE_PATH . '\php-src\nmake_embed_wrapper.bat --task-args php8embed.lib');
         */
     }
 
@@ -236,7 +236,7 @@ class WindowsBuilder extends BuilderBase
         }
 
         try {
-            cmd()->cd(SOURCE_PATH . '\php-src')->exec("{$this->sdk_prefix} nmake_micro_wrapper.bat --task-args micro");
+            cmd()->cd(SOURCE_PATH . '\php-src')->exec("{$this->sdk_prefix} " . SOURCE_PATH . '\php-src\nmake_micro_wrapper.bat --task-args micro');
         } finally {
             if ($this->phar_patched) {
                 SourcePatcher::unpatchMicroPhar();
@@ -289,7 +289,7 @@ class WindowsBuilder extends BuilderBase
     public function cleanMake(): void
     {
         FileSystem::writeFile(SOURCE_PATH . '\php-src\nmake_clean_wrapper.bat', 'nmake /nologo %*');
-        cmd()->cd(SOURCE_PATH . '\php-src')->exec("{$this->sdk_prefix} nmake_clean_wrapper.bat --task-args \"clean\"");
+        cmd()->cd(SOURCE_PATH . '\php-src')->exec("{$this->sdk_prefix} " . SOURCE_PATH . '\php-src\nmake_clean_wrapper.bat --task-args "clean"');
     }
 
     /**
