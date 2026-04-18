@@ -74,7 +74,7 @@ jobs:
       - name: "Download & Build (macOS)"
         if: matrix.os.platform == 'macos'
         run: |
-          composer update --no-dev --classmap-authoritative
+          composer install --no-dev --classmap-authoritative
           ./bin/spc doctor --auto-fix || true
           ./bin/spc download \
             --with-php=${{ matrix.php-version }} \
@@ -102,7 +102,7 @@ jobs:
       # ── Windows ──
       - name: "Install Composer deps (Windows)"
         if: matrix.os.platform == 'windows'
-        run: composer update --no-dev --classmap-authoritative
+        run: composer install --no-dev --classmap-authoritative
 
       - name: "Download & Build (Windows)"
         if: matrix.os.platform == 'windows'
