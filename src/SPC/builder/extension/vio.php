@@ -117,10 +117,50 @@ class vio extends Extension
                 );
             }
 
-            // VIO's ARG_WITH("glfw") is kept even when the glfw PHP extension is
-            // present: getWindowsConfigureArg passes --with-glfw so the handler
-            // must exist. Both ARG_WITH("glfw") (vio) and ARG_ENABLE("glfw")
-            // (glfw ext) set PHP_GLFW - the command-line value wins.
+            // When the glfw PHP extension is present, its ARG_ENABLE("glfw")
+            // conflicts with vio's ARG_WITH("glfw") - PHP's configure.js only
+            // processes the first registration, so vio's ARG_WITH is ignored and
+            // HAVE_GLFW never gets set. Fix: remove vio's ARG_WITH("glfw") and
+            // replace the detection block with a direct buildroot path check.
+            if ($this->builder->getExt('glfw') !== null) {
+                $w32Content = preg_replace('/^\s*ARG_WITH\("glfw"[^;]*;\s*\n/m', '', $w32Content);
+                // ARG_ENABLE("glfw") from php-glfw conflicts with vio's
+                // ARG_WITH("glfw") in PHP's configure.js - second registration
+                // is ignored, so PHP_GLFW-based detection never finds headers.
+                // Replace with direct buildroot path check.
+                $oldGlfw = <<<'JSBLOCK'
+    if (PHP_GLFW != "no") {
+        if (PHP_GLFW == "yes") {
+            // Try default PHP deps directory
+            PHP_GLFW = PHP_PHP_BUILD;
+        }
+        if (CHECK_HEADER_ADD_INCLUDE("GLFW/glfw3.h", "CFLAGS_VIO", PHP_GLFW + "\\include")) {
+            if (CHECK_LIB("glfw3dll.lib", "vio", PHP_GLFW + "\\lib") ||
+                CHECK_LIB("glfw3.lib", "vio", PHP_GLFW + "\\lib")) {
+                AC_DEFINE("HAVE_GLFW", 1, "Whether GLFW is available");
+            } else {
+                WARNING("GLFW library not found, building without window support");
+            }
+        } else {
+            WARNING("GLFW headers not found at " + PHP_GLFW);
+        }
+    }
+JSBLOCK;
+                $newGlfw = <<<'JSBLOCK'
+    // GLFW: detect via buildroot (glfw ext provides ARG_ENABLE)
+    if (CHECK_HEADER_ADD_INCLUDE("GLFW/glfw3.h", "CFLAGS_VIO", PHP_PHP_BUILD + "\\include")) {
+        if (CHECK_LIB("glfw3dll.lib", "vio", PHP_PHP_BUILD + "\\lib") ||
+            CHECK_LIB("glfw3.lib", "vio", PHP_PHP_BUILD + "\\lib")) {
+            AC_DEFINE("HAVE_GLFW", 1, "Whether GLFW is available");
+        } else {
+            WARNING("GLFW library not found in buildroot");
+        }
+    } else {
+        WARNING("GLFW headers not found in buildroot");
+    }
+JSBLOCK;
+                $w32Content = str_replace($oldGlfw, $newGlfw, $w32Content);
+            }
             if ($this->builder->getExt('vulkan') !== null) {
                 $w32Content = preg_replace('/^\s*ARG_WITH\("vulkan"[^;]*;\s*\n/m', '', $w32Content);
             }
@@ -271,12 +311,13 @@ class vio extends Extension
         $args = '--enable-vio --with-glslang --with-spirv-cross';
         $args .= ' --with-d3d11 --with-d3d12';
 
-        // Always pass --with-glfw so vio gets HAVE_GLFW for windowing and
-        // the OpenGL backend. When the glfw PHP extension is also present,
-        // patchBeforeBuildconf removes vio's ARG_WITH("glfw") to avoid
-        // duplicate registration - the glfw extension's ARG_ENABLE then
-        // handles it instead.
-        $args .= ' --with-glfw';
+        // Pass --with-glfw only when the glfw PHP extension is NOT present.
+        // When glfw ext IS present, patchBeforeBuildconf removes vio's
+        // ARG_WITH("glfw") and replaces detection with a direct buildroot
+        // check - no command-line flag needed.
+        if ($this->builder->getExt('glfw') === null) {
+            $args .= ' --with-glfw';
+        }
 
         // Only pass --with-vulkan if the vulkan PHP extension is NOT present.
         if ($this->builder->getExt('vulkan') === null && $this->builder->getLib('vulkan-loader') !== null) {
