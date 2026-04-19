@@ -297,10 +297,22 @@ class WindowsBuilder extends BuilderBase
      */
     public function sanityCheck(mixed $build_target): void
     {
-        // remove all .dll from `buildroot/bin/`
-        logger()->debug('Removing all .dll files from buildroot/bin/');
+        // Remove leftover .dll files from buildroot/bin/ so the sanity check
+        // exercises the static binary only.
+        //
+        // Exception: keep DLLs that libraries intentionally place here as
+        // runtime dependencies (vulkan-loader is shipped as vulkan-1.dll
+        // because the static loader has broken ICD discovery). Deleting them
+        // here would also strip them from `spc micro:combine` output dirs.
+        $runtime_dll_keeplist = [
+            'vulkan-1.dll',
+        ];
+        logger()->debug('Removing leftover .dll files from buildroot/bin/ (keep: ' . implode(', ', $runtime_dll_keeplist) . ')');
         $dlls = glob(BUILD_BIN_PATH . '\*.dll');
         foreach ($dlls as $dll) {
+            if (in_array(basename($dll), $runtime_dll_keeplist, true)) {
+                continue;
+            }
             @unlink($dll);
         }
         // sanity check for php-cli
