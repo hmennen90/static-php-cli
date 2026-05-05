@@ -198,6 +198,11 @@ JSBLOCK;
             }
 
             file_put_contents($configW32, $w32Content);
+
+            // Debug: dump patched config.w32 to log so we can inspect what JS
+            // configure.js is generated from. Remove once Windows configure
+            // step is verified to succeed with HAVE_GLFW defined.
+            logger()->info('[vio] Patched config.w32 follows ===BEGIN===' . PHP_EOL . $w32Content . PHP_EOL . '===END===');
         }
 
         // VMA wrapper: on Windows, PHP uses config.w32.h not config.h, and HAVE_VULKAN
