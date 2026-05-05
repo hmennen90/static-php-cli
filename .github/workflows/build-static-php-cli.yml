@@ -138,7 +138,8 @@ jobs:
           if-no-files-found: warn
 
       - name: "Upload build logs"
-        if: failure()
+        # always upload Windows logs to trace HAVE_GLFW detection even on success
+        if: failure() || matrix.os.platform == 'windows'
         uses: actions/upload-artifact@v4
         with:
           name: build-logs-${{ matrix.variant.name }}-8.4-${{ matrix.os.name }}
@@ -274,7 +275,8 @@ jobs:
           ./bin/spc build "${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }}" --build-micro -I "memory_limit=-1" --without-micro-ext-test
 
       - name: "Upload build logs"
-        if: failure()
+        # always upload Windows logs to trace HAVE_GLFW detection even on success
+        if: failure() || matrix.os.platform == 'windows'
         uses: actions/upload-artifact@v4
         with:
           name: build-logs-${{ matrix.variant.name }}-8.5-${{ matrix.os.name }}
