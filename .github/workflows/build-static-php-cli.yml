@@ -105,6 +105,38 @@ jobs:
           ./bin/spc download --with-php="8.4" --for-extensions="${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }}" --prefer-pre-built
           ./bin/spc build "${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }}" --build-micro -I "memory_limit=-1" --without-micro-ext-test
 
+      - name: "Debug: dump configure.js context (Windows failure)"
+        if: failure() && matrix.os.platform == 'windows'
+        shell: pwsh
+        run: |
+          $configPath = "source/php-src/configure.js"
+          if (Test-Path $configPath) {
+            Write-Host "=== configure.js lines 4270-4310 ==="
+            Get-Content $configPath | Select-Object -Skip 4269 -First 41 | ForEach-Object -Begin {$i=4270} -Process { "{0,5}: {1}" -f $i, $_; $i++ }
+            Write-Host "=== end ==="
+          } else {
+            Write-Host "configure.js not found at $configPath"
+            Get-ChildItem -Recurse -Filter configure.js source/ -ErrorAction SilentlyContinue | Select-Object -First 5 | ForEach-Object { Write-Host $_.FullName }
+          }
+
+      - name: "Upload configure.js (Windows failure)"
+        if: failure() && matrix.os.platform == 'windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: configure-js-${{ matrix.variant.name }}-8.4-${{ matrix.os.name }}
+          path: source/php-src/configure.js
+          if-no-files-found: warn
+
+      - name: "Upload ext config.w32 files (Windows failure)"
+        if: failure() && matrix.os.platform == 'windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ext-config-w32-${{ matrix.variant.name }}-8.4-${{ matrix.os.name }}
+          path: |
+            source/php-src/ext/*/config.w32
+            source/vio/config.w32
+          if-no-files-found: warn
+
       - name: "Upload build logs"
         if: failure()
         uses: actions/upload-artifact@v4

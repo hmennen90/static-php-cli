@@ -98,10 +98,24 @@ class vio extends Extension
             file_put_contents($configM4, $m4Content);
         }
 
-        // Patch config.w32: normalize CRLF to LF for reliable string matching,
-        // add VMA C++ wrapper, and remove conflicting ARG_WITH declarations
-        // that prevent the standalone glfw/vulkan PHP extensions from being
-        // enabled by configure.
+        // Patch config.w32: normalize CRLF to LF, add VMA C++ wrapper.
+        //
+        // We deliberately do NOT replace the upstream GLFW/Vulkan detection
+        // blocks. confutils.js (`win32/build/confutils.js`) registers
+        // ARG_WITH and ARG_ENABLE by simply appending to a flat
+        // configure_args[] array - duplicate names from different extensions
+        // (vio's ARG_WITH("glfw") + glfw ext's ARG_ENABLE("glfw")) coexist
+        // and both contribute to the shared PHP_GLFW global. The cmdline
+        // matching loop breaks on first match, but defaults for unmatched
+        // entries get applied afterwards via a second loop. Passing both
+        // --enable-glfw (from glfw ext) and --with-glfw (from vio, see
+        // getWindowsConfigureArg) marks both seen, skipping the default
+        // loop, and the last cmdline write wins for PHP_GLFW.
+        //
+        // Patching the JScript blocks via PHP heredoc + regex was fragile:
+        // node --check accepted the output but Microsoft's cscript JScript
+        // engine rejected it with "Expected ';'" at line 4286 col 11 of
+        // the merged configure.js. The simpler upstream flow just works.
         $configW32 = SOURCE_PATH . '/php-src/ext/vio/config.w32';
         if (file_exists($configW32)) {
             $w32Content = file_get_contents($configW32);
@@ -117,98 +131,7 @@ class vio extends Extension
                 );
             }
 
-            // ARG_ENABLE("glfw") from php-glfw conflicts with vio's
-            // ARG_WITH("glfw") in PHP's configure.js — second registration
-            // is ignored, so PHP_GLFW-based detection never finds headers
-            // and HAVE_GLFW silently stays undefined. Fix: strip vio's
-            // ARG_WITH("glfw") and replace its detection block with a direct
-            // buildroot path check. Indent-aware regex tolerates upstream
-            // wording shifts (comment lines, whitespace) across versions.
-            // preg_replace_callback (not preg_replace) is required because
-            // the JS source contains `\\include` / `\\lib` and preg_replace
-            // would interpret each `\\` in the replacement as a single `\`.
-            if ($this->builder->getExt('glfw') !== null) {
-                $w32Content = preg_replace('/^\s*ARG_WITH\("glfw"[^;]*;\s*\n/m', '', $w32Content);
-                $newGlfw = <<<'JSBLOCK'
-    // GLFW: detect via buildroot (glfw ext provides ARG_ENABLE)
-    if (CHECK_HEADER_ADD_INCLUDE("GLFW/glfw3.h", "CFLAGS_VIO", PHP_PHP_BUILD + "\\include")) {
-        if (CHECK_LIB("glfw3dll.lib", "vio", PHP_PHP_BUILD + "\\lib") ||
-            CHECK_LIB("glfw3.lib", "vio", PHP_PHP_BUILD + "\\lib")) {
-            AC_DEFINE("HAVE_GLFW", 1, "Whether GLFW is available");
-        } else {
-            WARNING("GLFW library not found in buildroot");
-        }
-    } else {
-        WARNING("GLFW headers not found in buildroot");
-    }
-
-JSBLOCK;
-                $glfwCallback = static fn (): string => $newGlfw;
-                // v1.10.x+: outer `if (PHP_GLFW != "no") { ... }` block.
-                $patched = preg_replace_callback(
-                    '/^([ \t]+)if\s*\(\s*PHP_GLFW\s*!=\s*"no"\s*\)\s*\{\n.*?\n\1\}\s*\n/sm',
-                    $glfwCallback,
-                    $w32Content,
-                    1,
-                    $glfwCount
-                );
-                if ($glfwCount === 0) {
-                    // Pre-v1.10: bare `if (CHECK_HEADER_ADD_INCLUDE("GLFW/glfw3.h"...))` block.
-                    $patched = preg_replace_callback(
-                        '/^([ \t]+)if\s*\(\s*CHECK_HEADER_ADD_INCLUDE\s*\(\s*"GLFW\/glfw3\.h".*?\n\1\}\s*\n/sm',
-                        $glfwCallback,
-                        $w32Content,
-                        1,
-                        $glfwCount
-                    );
-                }
-                if ($glfwCount > 0) {
-                    $w32Content = $patched;
-                } else {
-                    logger()->warning('[vio] GLFW detection block in upstream config.w32 did not match - HAVE_GLFW may be silently undefined. md5=' . md5($w32Content));
-                }
-            }
-            if ($this->builder->getExt('vulkan') !== null) {
-                $w32Content = preg_replace('/^\s*ARG_WITH\("vulkan"[^;]*;\s*\n/m', '', $w32Content);
-                $newVulkan = <<<'JSBLOCK'
-    // Vulkan: detect via buildroot (vulkan ext provides ARG_ENABLE)
-    if (CHECK_HEADER_ADD_INCLUDE("vulkan/vulkan.h", "CFLAGS_VIO", PHP_PHP_BUILD + "\\include")) {
-        if (CHECK_LIB("vulkan-1.lib", "vio", PHP_PHP_BUILD + "\\lib")) {
-            AC_DEFINE("HAVE_VULKAN", 1, "Whether Vulkan is available");
-        } else {
-            WARNING("Vulkan library not found in buildroot");
-        }
-    } else {
-        WARNING("Vulkan headers not found in buildroot");
-    }
-
-JSBLOCK;
-                $patched = preg_replace_callback(
-                    '/^([ \t]+)if\s*\(\s*PHP_VULKAN\s*!=\s*"no"\s*\)\s*\{\n.*?\n\1\}\s*\n/sm',
-                    static fn (): string => $newVulkan,
-                    $w32Content,
-                    1,
-                    $vulkanCount
-                );
-                if ($vulkanCount > 0) {
-                    $w32Content = $patched;
-                } else {
-                    logger()->warning('[vio] Vulkan detection block in upstream config.w32 did not match - HAVE_VULKAN may be silently undefined');
-                }
-            }
-
-            // Re-normalize CRLF -> LF: heredoc replacements above inherit
-            // line endings from this PHP source file, so on the Windows
-            // runner (git autocrlf) they inject CRLF into an otherwise
-            // LF-normalized buffer. Mixed endings break JScript's parser
-            // when PHP merges this into configure.js.
-            $w32Content = str_replace("\r\n", "\n", $w32Content);
             file_put_contents($configW32, $w32Content);
-
-            // Debug: dump patched config.w32 to log so we can inspect what JS
-            // configure.js is generated from. Remove once Windows configure
-            // step is verified to succeed with HAVE_GLFW defined.
-            logger()->info('[vio] Patched config.w32 follows ===BEGIN===' . PHP_EOL . $w32Content . PHP_EOL . '===END===');
         }
 
         // VMA wrapper: on Windows, PHP uses config.w32.h not config.h, and HAVE_VULKAN
@@ -360,16 +283,17 @@ JSBLOCK;
         $args = '--enable-vio --with-glslang --with-spirv-cross';
         $args .= ' --with-d3d11 --with-d3d12';
 
-        // Pass --with-glfw only when the glfw PHP extension is NOT present.
-        // When glfw ext IS present, patchBeforeBuildconf removes vio's
-        // ARG_WITH("glfw") and replaces detection with a direct buildroot
-        // check - no command-line flag needed.
-        if ($this->builder->getExt('glfw') === null) {
-            $args .= ' --with-glfw';
-        }
+        // Always pass --with-glfw. vio's ARG_WITH("glfw") in config.w32
+        // coexists with glfw ext's ARG_ENABLE("glfw") - both are kept in
+        // configure_args[] and contribute to the shared PHP_GLFW global.
+        // vio's detection block reassigns PHP_GLFW="yes" to PHP_PHP_BUILD,
+        // so the buildroot path is searched for headers/libs.
+        $args .= ' --with-glfw';
 
-        // Only pass --with-vulkan if the vulkan PHP extension is NOT present.
-        if ($this->builder->getExt('vulkan') === null && $this->builder->getLib('vulkan-loader') !== null) {
+        // Same flow for vulkan: ARG_WITH coexists with vulkan ext's
+        // registration. vio's detection block reassigns "yes" to
+        // PHP_PHP_BUILD when vulkan-loader lib is present.
+        if ($this->builder->getLib('vulkan-loader') !== null) {
             $args .= ' --with-vulkan';
         }
 
