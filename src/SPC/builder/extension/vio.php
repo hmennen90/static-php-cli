@@ -98,24 +98,16 @@ class vio extends Extension
             file_put_contents($configM4, $m4Content);
         }
 
-        // Patch config.w32: normalize CRLF to LF, add VMA C++ wrapper.
+        // Patch config.w32: normalize CRLF to LF, add VMA C++ wrapper,
+        // re-assert PHP_GLFW / PHP_VULKAN inside vio's body (see comment
+        // block before the str_replace below for full context).
         //
         // We deliberately do NOT replace the upstream GLFW/Vulkan detection
-        // blocks. confutils.js (`win32/build/confutils.js`) registers
-        // ARG_WITH and ARG_ENABLE by simply appending to a flat
-        // configure_args[] array - duplicate names from different extensions
-        // (vio's ARG_WITH("glfw") + glfw ext's ARG_ENABLE("glfw")) coexist
-        // and both contribute to the shared PHP_GLFW global. The cmdline
-        // matching loop breaks on first match, but defaults for unmatched
-        // entries get applied afterwards via a second loop. Passing both
-        // --enable-glfw (from glfw ext) and --with-glfw (from vio, see
-        // getWindowsConfigureArg) marks both seen, skipping the default
-        // loop, and the last cmdline write wins for PHP_GLFW.
-        //
-        // Patching the JScript blocks via PHP heredoc + regex was fragile:
-        // node --check accepted the output but Microsoft's cscript JScript
-        // engine rejected it with "Expected ';'" at line 4286 col 11 of
-        // the merged configure.js. The simpler upstream flow just works.
+        // blocks themselves - that approach was fragile (node --check
+        // accepted our heredoc output but cscript JScript rejected it with
+        // "Expected ';'" at configure.js line 4286 col 11). The simpler
+        // approach: leave detection logic upstream-pristine, just override
+        // the input variables that --disable-all clobbers.
         $configW32 = SOURCE_PATH . '/php-src/ext/vio/config.w32';
         if (file_exists($configW32)) {
             $w32Content = file_get_contents($configW32);
@@ -130,6 +122,39 @@ class vio extends Extension
                     $w32Content
                 );
             }
+
+            // Re-assert PHP_GLFW / PHP_VULKAN at the start of vio's body.
+            //
+            // PHP's win32 buildconf.js extracts ALL `ARG_(ENABLE|WITH)(...)`
+            // calls via flat regex - including ones nested inside other
+            // extensions' `if` blocks. ext-vulkan/config.w32 has a nested
+            // `ARG_WITH("glfw", ..., "yes")` inside `if (PHP_VULKAN != "no")`,
+            // so configure.js ends up with 3 registrations for "glfw":
+            //   1. glfw ext   ARG_ENABLE("glfw", ..., "no")
+            //   2. vio        ARG_WITH("glfw",   ..., "yes")
+            //   3. vulkan ext ARG_WITH("glfw",   ..., "yes")  ← nested
+            // The cmdline match loop in conf_process_args breaks on first
+            // hit, so `--enable-glfw` marks #1 seen and `--with-glfw` marks
+            // #2 seen - #3 stays unseen. spc passes `--disable-all`, which
+            // forces every unseen entry to "no" in the post-cmdline default
+            // loop, OVERWRITING the earlier PHP_GLFW="yes" writes via eval.
+            // Same shape for PHP_VULKAN (vulkan ext's ARG_WITH("vulkan", "no")
+            // stays unseen because vio's ARG_WITH("vulkan", "yes") matches
+            // --with-vulkan first alphabetically).
+            //
+            // Reassigning PHP_GLFW / PHP_VULKAN inside vio's body bypasses
+            // the disable-all damage. Vio's existing `if (PHP_X == "yes")`
+            // detection blocks then reassign to PHP_PHP_BUILD as designed.
+            $w32Content = str_replace(
+                "if (PHP_VIO != \"no\") {\n",
+                "if (PHP_VIO != \"no\") {\n" .
+                "\n" .
+                "    // spc patch: undo --disable-all damage to PHP_GLFW / PHP_VULKAN\n" .
+                "    // (see static-php-cli vio.php patchBeforeBuildconf for full context)\n" .
+                "    PHP_GLFW = \"yes\";\n" .
+                "    PHP_VULKAN = \"yes\";\n",
+                $w32Content
+            );
 
             file_put_contents($configW32, $w32Content);
         }
