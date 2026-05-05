@@ -170,15 +170,21 @@ JSBLOCK;
 
         // VMA wrapper: on Windows, PHP uses config.w32.h not config.h, and HAVE_VULKAN
         // is defined via /D compiler flags. Patch the include to be platform-aware.
+        // Also strip the `#ifdef HAVE_CONFIG_H` guard upstream added in v1.10.x —
+        // PHP_NEW_EXTENSION's compile rule does not pass -DHAVE_CONFIG_H, so the
+        // guarded include would be skipped, leaving HAVE_VULKAN undefined and the
+        // whole .cpp empty (linker errors for vio_vma_create et al.).
         $vmaWrapper = SOURCE_PATH . '/php-src/ext/vio/src/backends/vulkan/vio_vma_wrapper.cpp';
         if (file_exists($vmaWrapper)) {
             $vmaContent = file_get_contents($vmaWrapper);
-            if (str_contains($vmaContent, '#include "config.h"')) {
-                $vmaContent = str_replace(
-                    '#include "config.h"',
-                    "#ifdef _WIN32\n#include \"config.w32.h\"\n#else\n#include \"config.h\"\n#endif",
-                    $vmaContent
-                );
+            $platformInclude = "#ifdef _WIN32\n#include \"config.w32.h\"\n#else\n#include \"config.h\"\n#endif";
+
+            $guarded = "#ifdef HAVE_CONFIG_H\n#include \"config.h\"\n#endif";
+            if (str_contains($vmaContent, $guarded)) {
+                $vmaContent = str_replace($guarded, $platformInclude, $vmaContent);
+                file_put_contents($vmaWrapper, $vmaContent);
+            } elseif (str_contains($vmaContent, '#include "config.h"')) {
+                $vmaContent = str_replace('#include "config.h"', $platformInclude, $vmaContent);
                 file_put_contents($vmaWrapper, $vmaContent);
             }
         }
