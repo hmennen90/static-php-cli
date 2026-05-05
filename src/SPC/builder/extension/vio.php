@@ -117,49 +117,18 @@ class vio extends Extension
                 );
             }
 
-            // When the glfw PHP extension is present, its ARG_ENABLE("glfw")
-            // conflicts with vio's ARG_WITH("glfw") - PHP's configure.js only
-            // processes the first registration, so vio's ARG_WITH is ignored and
-            // HAVE_GLFW never gets set. Fix: remove vio's ARG_WITH("glfw") and
-            // replace the detection block with a direct buildroot path check.
+            // ARG_ENABLE("glfw") from php-glfw conflicts with vio's
+            // ARG_WITH("glfw") in PHP's configure.js — second registration
+            // is ignored, so PHP_GLFW-based detection never finds headers
+            // and HAVE_GLFW silently stays undefined. Fix: strip vio's
+            // ARG_WITH("glfw") and replace its detection block with a direct
+            // buildroot path check. Indent-aware regex tolerates upstream
+            // wording shifts (comment lines, whitespace) across versions.
+            // preg_replace_callback (not preg_replace) is required because
+            // the JS source contains `\\include` / `\\lib` and preg_replace
+            // would interpret each `\\` in the replacement as a single `\`.
             if ($this->builder->getExt('glfw') !== null) {
                 $w32Content = preg_replace('/^\s*ARG_WITH\("glfw"[^;]*;\s*\n/m', '', $w32Content);
-                // ARG_ENABLE("glfw") from php-glfw conflicts with vio's
-                // ARG_WITH("glfw") in PHP's configure.js - second registration
-                // is ignored, so PHP_GLFW-based detection never finds headers.
-                // Replace with direct buildroot path check.
-                // Match the v1.10.2 upstream block (PHP_GLFW-based, with default
-                // "yes" → PHP_PHP_BUILD reassignment). Older block variants are
-                // kept as fallbacks in case upstream shifts wording again.
-                $glfw_v1_10_2 = <<<'JSBLOCK'
-    if (PHP_GLFW != "no") {
-        if (PHP_GLFW == "yes") {
-            PHP_GLFW = PHP_PHP_BUILD;
-        }
-        if (CHECK_HEADER_ADD_INCLUDE("GLFW/glfw3.h", "CFLAGS_VIO", PHP_GLFW + "\\include")) {
-            if (CHECK_LIB("glfw3dll.lib", "vio", PHP_GLFW + "\\lib") ||
-                CHECK_LIB("glfw3.lib", "vio", PHP_GLFW + "\\lib")) {
-                AC_DEFINE("HAVE_GLFW", 1, "Whether GLFW is available");
-            } else {
-                WARNING("GLFW library not found in " + PHP_GLFW + "\\lib");
-            }
-        } else {
-            WARNING("GLFW headers not found in " + PHP_GLFW + "\\include");
-        }
-    }
-JSBLOCK;
-                $glfw_pre_v1_10 = <<<'JSBLOCK'
-    if (CHECK_HEADER_ADD_INCLUDE("GLFW/glfw3.h", "CFLAGS_VIO", PHP_PHP_BUILD + "\\include")) {
-        if (CHECK_LIB("glfw3dll.lib", "vio", PHP_PHP_BUILD + "\\lib") ||
-            CHECK_LIB("glfw3.lib", "vio", PHP_PHP_BUILD + "\\lib")) {
-            AC_DEFINE("HAVE_GLFW", 1, "Whether GLFW is available");
-        } else {
-            WARNING("GLFW library not found in " + PHP_PHP_BUILD + "\\lib");
-        }
-    } else {
-        WARNING("GLFW headers not found in " + PHP_PHP_BUILD + "\\include");
-    }
-JSBLOCK;
                 $newGlfw = <<<'JSBLOCK'
     // GLFW: detect via buildroot (glfw ext provides ARG_ENABLE)
     if (CHECK_HEADER_ADD_INCLUDE("GLFW/glfw3.h", "CFLAGS_VIO", PHP_PHP_BUILD + "\\include")) {
@@ -172,37 +141,35 @@ JSBLOCK;
     } else {
         WARNING("GLFW headers not found in buildroot");
     }
+
 JSBLOCK;
-                if (str_contains($w32Content, $glfw_v1_10_2)) {
-                    $w32Content = str_replace($glfw_v1_10_2, $newGlfw, $w32Content);
-                } elseif (str_contains($w32Content, $glfw_pre_v1_10)) {
-                    $w32Content = str_replace($glfw_pre_v1_10, $newGlfw, $w32Content);
+                $glfwCallback = static fn (): string => $newGlfw;
+                // v1.10.x+: outer `if (PHP_GLFW != "no") { ... }` block.
+                $patched = preg_replace_callback(
+                    '/^([ \t]+)if\s*\(\s*PHP_GLFW\s*!=\s*"no"\s*\)\s*\{\n.*?\n\1\}\s*\n/sm',
+                    $glfwCallback,
+                    $w32Content,
+                    1,
+                    $glfwCount
+                );
+                if ($glfwCount === 0) {
+                    // Pre-v1.10: bare `if (CHECK_HEADER_ADD_INCLUDE("GLFW/glfw3.h"...))` block.
+                    $patched = preg_replace_callback(
+                        '/^([ \t]+)if\s*\(\s*CHECK_HEADER_ADD_INCLUDE\s*\(\s*"GLFW\/glfw3\.h".*?\n\1\}\s*\n/sm',
+                        $glfwCallback,
+                        $w32Content,
+                        1,
+                        $glfwCount
+                    );
+                }
+                if ($glfwCount > 0) {
+                    $w32Content = $patched;
                 } else {
-                    logger()->warning('[vio] GLFW detection block in upstream config.w32 did not match any known variant - HAVE_GLFW may be silently undefined');
+                    logger()->warning('[vio] GLFW detection block in upstream config.w32 did not match - HAVE_GLFW may be silently undefined. md5=' . md5($w32Content));
                 }
             }
             if ($this->builder->getExt('vulkan') !== null) {
                 $w32Content = preg_replace('/^\s*ARG_WITH\("vulkan"[^;]*;\s*\n/m', '', $w32Content);
-
-                // Same problem as GLFW: removing ARG_WITH("vulkan") leaves
-                // PHP_VULKAN undefined, so the upstream PHP_VULKAN-based detection
-                // silently fails. Replace it with a direct buildroot check.
-                $vulkan_v1_10_2 = <<<'JSBLOCK'
-    if (PHP_VULKAN != "no") {
-        if (PHP_VULKAN == "yes") {
-            PHP_VULKAN = PHP_PHP_BUILD;
-        }
-        if (CHECK_HEADER_ADD_INCLUDE("vulkan/vulkan.h", "CFLAGS_VIO", PHP_VULKAN + "\\include")) {
-            if (CHECK_LIB("vulkan-1.lib", "vio", PHP_VULKAN + "\\lib")) {
-                AC_DEFINE("HAVE_VULKAN", 1, "Whether Vulkan is available");
-            } else {
-                WARNING("Vulkan library not found in " + PHP_VULKAN + "\\lib");
-            }
-        } else {
-            WARNING("Vulkan headers not found in " + PHP_VULKAN + "\\include");
-        }
-    }
-JSBLOCK;
                 $newVulkan = <<<'JSBLOCK'
     // Vulkan: detect via buildroot (vulkan ext provides ARG_ENABLE)
     if (CHECK_HEADER_ADD_INCLUDE("vulkan/vulkan.h", "CFLAGS_VIO", PHP_PHP_BUILD + "\\include")) {
@@ -214,9 +181,19 @@ JSBLOCK;
     } else {
         WARNING("Vulkan headers not found in buildroot");
     }
+
 JSBLOCK;
-                if (str_contains($w32Content, $vulkan_v1_10_2)) {
-                    $w32Content = str_replace($vulkan_v1_10_2, $newVulkan, $w32Content);
+                $patched = preg_replace_callback(
+                    '/^([ \t]+)if\s*\(\s*PHP_VULKAN\s*!=\s*"no"\s*\)\s*\{\n.*?\n\1\}\s*\n/sm',
+                    static fn (): string => $newVulkan,
+                    $w32Content,
+                    1,
+                    $vulkanCount
+                );
+                if ($vulkanCount > 0) {
+                    $w32Content = $patched;
+                } else {
+                    logger()->warning('[vio] Vulkan detection block in upstream config.w32 did not match - HAVE_VULKAN may be silently undefined');
                 }
             }
 
