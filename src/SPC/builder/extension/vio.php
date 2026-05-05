@@ -197,6 +197,12 @@ JSBLOCK;
                 }
             }
 
+            // Re-normalize CRLF -> LF: heredoc replacements above inherit
+            // line endings from this PHP source file, so on the Windows
+            // runner (git autocrlf) they inject CRLF into an otherwise
+            // LF-normalized buffer. Mixed endings break JScript's parser
+            // when PHP merges this into configure.js.
+            $w32Content = str_replace("\r\n", "\n", $w32Content);
             file_put_contents($configW32, $w32Content);
 
             // Debug: dump patched config.w32 to log so we can inspect what JS
