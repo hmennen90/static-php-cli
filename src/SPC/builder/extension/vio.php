@@ -113,8 +113,16 @@ class vio extends Extension
             $w32Content = file_get_contents($configW32);
             $w32Content = str_replace("\r\n", "\n", $w32Content);
 
-            // VMA C++ wrapper: add to source list for Vulkan support
-            if ($this->builder->getLib('vulkan-headers') !== null) {
+            // VMA C++ wrapper: add to source list for Vulkan support.
+            // php-vio >= 1.10.7 (commit e30c134 → 2bcef74) wires the wrapper
+            // into vio_sources directly inside the Vulkan detection block,
+            // so this str_replace would create a duplicate compile entry on
+            // the same .cpp under MSVC's parallel build (/MP), which then
+            // races on the .sbr lockfile and fails with "Permission denied".
+            // Skip the patch if the wrapper is already declared anywhere in
+            // config.w32 — this stays compatible with older php-vio versions.
+            if ($this->builder->getLib('vulkan-headers') !== null
+                && !str_contains($w32Content, 'vio_vma_wrapper.cpp')) {
                 $w32Content = str_replace(
                     "        \"src\\\\backends\\\\vulkan\\\\vio_vulkan.c \" +\n",
                     "        \"src\\\\backends\\\\vulkan\\\\vio_vulkan.c \" +\n" .
