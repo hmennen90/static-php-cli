@@ -2,6 +2,13 @@ name: "Build Game micro.sfx"
 
 on:
   workflow_dispatch:
+  # Auto-rebuild whenever phpolygon/php-vio publishes a new release.
+  # The dispatcher lives in php-vio's build.yml release job and posts an
+  # `event_type: php-vio-released` payload via repository_dispatch.
+  # Requires repo secret STATIC_PHP_CLI_DISPATCH_PAT to be configured on
+  # phpolygon/php-vio (a fine-grained PAT with `actions: write` here).
+  repository_dispatch:
+    types: [php-vio-released]
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
