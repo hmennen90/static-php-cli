@@ -15,23 +15,23 @@ jobs:
           - name: macos-aarch64
             runner: macos-15
             platform: macos
-            gpu_extensions: ",vio,vulkan,metal"
+            gpu_extensions: ",vio,vulkan,metal,parallel"
           - name: macos-x86_64
             runner: macos-15-intel
             platform: macos
-            gpu_extensions: ",vio,vulkan,metal"
+            gpu_extensions: ",vio,vulkan,metal,parallel"
           - name: linux-x86_64
             runner: ubuntu-latest
             platform: linux
-            gpu_extensions: ",vio,vulkan"
+            gpu_extensions: ",vio,vulkan,parallel"
           - name: linux-aarch64
             runner: ubuntu-24.04-arm
             platform: linux
-            gpu_extensions: ",vio,vulkan"
+            gpu_extensions: ",vio,vulkan,parallel"
           - name: windows-x86_64
             runner: windows-latest
             platform: windows
-            gpu_extensions: ",vio,vulkan"
+            gpu_extensions: ",vio,vulkan,parallel"
         variant:
           - name: base
             extensions: "glfw,mbstring,zip,phar"
@@ -77,7 +77,7 @@ jobs:
             --for-extensions=${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} \
             --ignore-cache-sources=php-src \
             --prefer-pre-built
-          ./bin/spc build ${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} --build-micro -I "memory_limit=-1" --without-micro-ext-test
+          ./bin/spc build ${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} --build-micro --enable-zts -I "memory_limit=-1" --without-micro-ext-test
 
       - name: "Download & Build (Linux)"
         if: matrix.os.platform == 'linux'
@@ -92,7 +92,7 @@ jobs:
             --for-extensions=${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} \
             --ignore-cache-sources=php-src \
             --prefer-pre-built
-          $SPC_CMD build ${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} --build-micro -I "memory_limit=-1" --without-micro-ext-test
+          $SPC_CMD build ${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} --build-micro --enable-zts -I "memory_limit=-1" --without-micro-ext-test
 
       - name: "Install Composer deps (Windows)"
         if: matrix.os.platform == 'windows'
@@ -103,7 +103,7 @@ jobs:
         run: |
           ./bin/spc doctor
           ./bin/spc download --with-php="8.4" --for-extensions="${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }}" --prefer-pre-built
-          ./bin/spc build "${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }}" --build-micro -I "memory_limit=-1" --without-micro-ext-test
+          ./bin/spc build "${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }}" --build-micro --enable-zts --enable-micro-win32 -I "memory_limit=-1" --without-micro-ext-test
 
       - name: "Debug: dump configure.js context (Windows failure)"
         if: failure() && matrix.os.platform == 'windows'
@@ -184,23 +184,23 @@ jobs:
           - name: macos-aarch64
             runner: macos-15
             platform: macos
-            gpu_extensions: ",vio,vulkan,metal"
+            gpu_extensions: ",vio,vulkan,metal,parallel"
           - name: macos-x86_64
             runner: macos-15-intel
             platform: macos
-            gpu_extensions: ",vio,vulkan,metal"
+            gpu_extensions: ",vio,vulkan,metal,parallel"
           - name: linux-x86_64
             runner: ubuntu-latest
             platform: linux
-            gpu_extensions: ",vio,vulkan"
+            gpu_extensions: ",vio,vulkan,parallel"
           - name: linux-aarch64
             runner: ubuntu-24.04-arm
             platform: linux
-            gpu_extensions: ",vio,vulkan"
+            gpu_extensions: ",vio,vulkan,parallel"
           - name: windows-x86_64
             runner: windows-latest
             platform: windows
-            gpu_extensions: ",vio,vulkan"
+            gpu_extensions: ",vio,vulkan,parallel"
         variant:
           - name: base
             extensions: "glfw,mbstring,zip,phar"
@@ -246,7 +246,7 @@ jobs:
             --for-extensions=${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} \
             --ignore-cache-sources=php-src \
             --prefer-pre-built
-          ./bin/spc build ${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} --build-micro -I "memory_limit=-1" --without-micro-ext-test
+          ./bin/spc build ${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} --build-micro --enable-zts -I "memory_limit=-1" --without-micro-ext-test
 
       - name: "Download & Build (Linux)"
         if: matrix.os.platform == 'linux'
@@ -261,7 +261,7 @@ jobs:
             --for-extensions=${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} \
             --ignore-cache-sources=php-src \
             --prefer-pre-built
-          $SPC_CMD build ${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} --build-micro -I "memory_limit=-1" --without-micro-ext-test
+          $SPC_CMD build ${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} --build-micro --enable-zts -I "memory_limit=-1" --without-micro-ext-test
 
       - name: "Install Composer deps (Windows)"
         if: matrix.os.platform == 'windows'
@@ -272,7 +272,7 @@ jobs:
         run: |
           ./bin/spc doctor
           ./bin/spc download --with-php="8.5" --for-extensions="${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }}" --prefer-pre-built
-          ./bin/spc build "${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }}" --build-micro -I "memory_limit=-1" --without-micro-ext-test
+          ./bin/spc build "${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }}" --build-micro --enable-zts --enable-micro-win32 -I "memory_limit=-1" --without-micro-ext-test
 
       - name: "Upload build logs"
         # always upload Windows logs to trace HAVE_GLFW detection even on success
