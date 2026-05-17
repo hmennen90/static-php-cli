@@ -41,10 +41,10 @@ jobs:
             gpu_extensions: ",vio,vulkan,parallel"
         variant:
           - name: base
-            extensions: "glfw,mbstring,zip,phar"
+            extensions: "glfw,mbstring,zip,phar,intl"
             steam: false
           - name: steam
-            extensions: "glfw,mbstring,zip,phar,steamworks"
+            extensions: "glfw,mbstring,zip,phar,steamworks,intl"
             steam: true
         exclude:
           - os: { name: linux-aarch64 }
@@ -210,10 +210,10 @@ jobs:
             gpu_extensions: ",vio,vulkan,parallel"
         variant:
           - name: base
-            extensions: "glfw,mbstring,zip,phar"
+            extensions: "glfw,mbstring,zip,phar,intl"
             steam: false
           - name: steam
-            extensions: "glfw,mbstring,zip,phar,steamworks"
+            extensions: "glfw,mbstring,zip,phar,steamworks,intl"
             steam: true
         exclude:
           - os: { name: linux-aarch64 }
