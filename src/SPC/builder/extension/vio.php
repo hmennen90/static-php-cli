@@ -26,14 +26,12 @@ class vio extends Extension
         $configM4 = SOURCE_PATH . '/php-src/ext/vio/config.m4';
         $makefileFrag = SOURCE_PATH . '/php-src/ext/vio/Makefile.frag';
 
-        // VMA C++ wrapper: add .cpp to config.m4 source list for static builds.
-        if (file_exists($configM4)) {
-            FileSystem::replaceFileStr(
-                $configM4,
-                'src/backends/vulkan/vio_vulkan.c \\',
-                "src/backends/vulkan/vio_vulkan.c \\\n    src/backends/vulkan/vio_vma_wrapper.cpp \\"
-            );
-        }
+        // NOTE: php-vio config.m4 itself adds vio_vma_wrapper.cpp via
+        // PHP_ADD_SOURCES_X since b6d7409 (2026-05-18, "build: link Metal +
+        // VMA via PHP_ADD_SOURCES_X"). Patching it into PHP_NEW_EXTENSION
+        // here as well would cause duplicate-symbol linker errors.
+        // Only the Makefile.frag cleanup below stays - that block predates
+        // the PHP_ADD_SOURCES_X migration.
 
         // Remove the VMA block from Makefile.frag to prevent duplicate rules
         if (file_exists($makefileFrag)) {
@@ -196,18 +194,14 @@ class vio extends Extension
                 copy($metalSrc, $metalC);
             }
 
-            // Add vio_metal.c to the PHP_NEW_EXTENSION source list in config.m4
-            $configM4 = SOURCE_PATH . '/php-src/ext/vio/config.m4';
-            if (file_exists($configM4)) {
-                FileSystem::replaceFileStr(
-                    $configM4,
-                    'src/vio_backend_null.c \\',
-                    "src/vio_backend_null.c \\\n    src/backends/metal/vio_metal.c \\"
-                );
-            }
+            // NOTE: php-vio config.m4 itself adds vio_metal.c via
+            // PHP_ADD_SOURCES_X since b6d7409 (2026-05-18). Patching it into
+            // PHP_NEW_EXTENSION here would cause duplicate-symbol linker
+            // errors. Only the Makefile.frag cleanup stays - that block
+            // predates the PHP_ADD_SOURCES_X migration.
 
             // Remove the Metal block from Makefile.frag to prevent a duplicate
-            // rule for vio_metal.lo (we handle it via config.m4 above).
+            // rule for vio_metal.lo (config.m4 handles the build now).
             $makefileFrag = SOURCE_PATH . '/php-src/ext/vio/Makefile.frag';
             if (file_exists($makefileFrag)) {
                 $content = file_get_contents($makefileFrag);
