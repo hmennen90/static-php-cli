@@ -7,6 +7,7 @@ namespace SPC\builder\extension;
 use SPC\builder\Extension;
 use SPC\store\FileSystem;
 use SPC\util\CustomExt;
+use SPC\util\SPCTarget;
 
 #[CustomExt('vio')]
 class vio extends Extension
@@ -238,6 +239,27 @@ class vio extends Extension
             '-x objective-c -fobjc-arc -c $1',
             $content
         );
+
+        // iOS-only extra ObjC sources:
+        //   - vio_ios.c is a thin shim that #include's vio_ios.m (UIView /
+        //     CAMetalLayer / UITouch). Needs ObjC + ARC.
+        //   - miniaudio_impl.c pulls in AVFoundation on iOS (it picks
+        //     AVFoundation over CoreAudio when TARGET_OS_IPHONE=1).
+        //     AVFoundation's headers contain @class/@protocol declarations
+        //     that only parse under -x objective-c.
+        if (SPCTarget::isIOS()) {
+            $content = preg_replace(
+                '#-c\s+(\S+/ext/vio/src/backends/ios/vio_ios\.c)#',
+                '-x objective-c -fobjc-arc -c $1',
+                $content
+            );
+            $content = preg_replace(
+                '#-c\s+(\S+/ext/vio/vendor/miniaudio/miniaudio_impl\.c)#',
+                '-x objective-c -fobjc-arc -c $1',
+                $content
+            );
+        }
+
         file_put_contents($makefile, $content);
 
         return true;
@@ -246,7 +268,11 @@ class vio extends Extension
     public function patchBeforeConfigure(): bool
     {
         $extraLibs = [];
-        if (PHP_OS_FAMILY === 'Darwin') {
+        if (SPCTarget::isIOS()) {
+            // iOS: libc++ is in the SDK, no X11 / no -ldl / no -lpthread
+            // separately (libc + libSystem cover them).
+            $extraLibs[] = '-lc++';
+        } elseif (PHP_OS_FAMILY === 'Darwin') {
             $extraLibs[] = '-lc++';
         } elseif (PHP_OS_FAMILY === 'Linux') {
             $extraLibs[] = '-lstdc++';
@@ -275,6 +301,19 @@ class vio extends Extension
 
     public function getUnixConfigureArg(bool $shared = false): string
     {
+        // iOS / iPadOS: skip the desktop window/GPU backends, keep the shader
+        // compiler. config.m4 force-disables GLFW/Vulkan/FFmpeg when --with-ios
+        // is passed and forces Metal on, so we only need to opt into the iOS
+        // path and feed the cross-compiled shader libs.
+        if (SPCTarget::isIOS()) {
+            return '--enable-vio --with-ios'
+                . ' --with-glslang=' . BUILD_ROOT_PATH
+                . ' --with-spirv-cross=' . BUILD_ROOT_PATH
+                . ' --without-glfw'
+                . ' --without-ffmpeg'
+                . ' --without-vulkan';
+        }
+
         $args = '--enable-vio';
         $args .= ' --with-glfw=' . BUILD_ROOT_PATH;
         $args .= ' --with-glslang=' . BUILD_ROOT_PATH;
