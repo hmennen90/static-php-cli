@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SPC\store;
 
 use SPC\exception\WrongUsageException;
+use SPC\util\SPCTarget;
 
 class Config
 {
@@ -31,14 +32,7 @@ class Config
         }
         $supported_sys_based = ['match-pattern', 'prefer-stable', 'repo'];
         if (in_array($name, $supported_sys_based)) {
-            $m_key = match (PHP_OS_FAMILY) {
-                'Windows' => ['-windows', '-win', ''],
-                'Darwin' => ['-macos', '-unix', ''],
-                'Linux' => ['-linux', '-unix', ''],
-                'BSD' => ['-freebsd', '-bsd', '-unix', ''],
-                default => throw new WrongUsageException('OS ' . PHP_OS_FAMILY . ' is not supported'),
-            };
-            foreach ($m_key as $v) {
+            foreach (self::platformKeyPrefixes() as $v) {
                 if (isset(self::$pre_built["{$name}{$v}"])) {
                     return self::$pre_built["{$name}{$v}"];
                 }
@@ -94,14 +88,7 @@ class Config
         }
         $supported_sys_based = ['static-libs', 'headers', 'lib-depends', 'lib-suggests', 'frameworks', 'bin'];
         if ($key !== null && in_array($key, $supported_sys_based)) {
-            $m_key = match (PHP_OS_FAMILY) {
-                'Windows' => ['-windows', '-win', ''],
-                'Darwin' => ['-macos', '-unix', ''],
-                'Linux' => ['-linux', '-unix', ''],
-                'BSD' => ['-freebsd', '-bsd', '-unix', ''],
-                default => throw new WrongUsageException('OS ' . PHP_OS_FAMILY . ' is not supported'),
-            };
-            foreach ($m_key as $v) {
+            foreach (self::platformKeyPrefixes() as $v) {
                 if (isset(self::$lib[$name][$key . $v])) {
                     return self::$lib[$name][$key . $v];
                 }
@@ -163,14 +150,7 @@ class Config
         }
         $supported_sys_based = ['lib-depends', 'lib-suggests', 'ext-depends', 'ext-suggests', 'arg-type'];
         if ($key !== null && in_array($key, $supported_sys_based)) {
-            $m_key = match (PHP_OS_FAMILY) {
-                'Windows' => ['-windows', '-win', ''],
-                'Darwin' => ['-macos', '-unix', ''],
-                'Linux' => ['-linux', '-unix', ''],
-                'BSD' => ['-freebsd', '-bsd', '-unix', ''],
-                default => throw new WrongUsageException('OS ' . PHP_OS_FAMILY . ' is not supported'),
-            };
-            foreach ($m_key as $v) {
+            foreach (self::platformKeyPrefixes() as $v) {
                 if (isset(self::$ext[$name][$key . $v])) {
                     return self::$ext[$name][$key . $v];
                 }
@@ -207,5 +187,32 @@ class Config
             self::$source = FileSystem::loadConfigArray('source');
         }
         return self::$source;
+    }
+
+    /**
+     * Platform-specific key-suffix lookup order, most specific first.
+     * Used by getLib() / getExt() / getPreBuilt() to resolve keys like
+     * "lib-depends-ios" -> "lib-depends-macos" -> "lib-depends-unix" -> "lib-depends".
+     *
+     * iOS cross-compiles from a Darwin host but is distinct enough that it
+     * deserves its own bucket - moltenvk, glfw, ffmpeg etc. all need
+     * different (or no) builds on iOS. When SPC_TARGET=ios-*, we try the
+     * -ios suffix first and fall through the macOS / unix chain only if
+     * the entry is not iOS-specific.
+     *
+     * @return list<string>
+     */
+    private static function platformKeyPrefixes(): array
+    {
+        if (PHP_OS_FAMILY === 'Darwin' && SPCTarget::isIOS()) {
+            return ['-ios', '-macos', '-unix', ''];
+        }
+        return match (PHP_OS_FAMILY) {
+            'Windows' => ['-windows', '-win', ''],
+            'Darwin' => ['-macos', '-unix', ''],
+            'Linux' => ['-linux', '-unix', ''],
+            'BSD' => ['-freebsd', '-bsd', '-unix', ''],
+            default => throw new WrongUsageException('OS ' . PHP_OS_FAMILY . ' is not supported'),
+        };
     }
 }

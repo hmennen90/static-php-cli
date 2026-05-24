@@ -124,13 +124,33 @@ class UnixAutoconfExecutor extends Executor
      */
     private function getDefaultConfigureArgs(): array
     {
-        return [
+        $args = [
             '--enable-static',
             '--disable-shared',
             "--prefix={$this->library->getBuildRootPath()}",
             '--with-pic',
             '--enable-pic',
         ];
+
+        // iOS cross-compile: autoconf's "can we run a compiled program?" sanity
+        // check fails because the built binary is iOS-arm64 (or simulator) and
+        // we are on a Darwin-x86/arm host. --host= tells autoconf to skip the
+        // run-test and treat us as cross-compiling. We use *-apple-darwin
+        // rather than *-apple-ios because most lib configure scripts have
+        // case-statements on host_os=darwin* and lack an ios* branch; iOS-
+        // specific values travel through CFLAGS / -isysroot / --target= which
+        // the toolchain sets globally.
+        if (\SPC\util\SPCTarget::isIOS()) {
+            $arch = \SPC\builder\ios\SystemUtil::getArch();
+            $hostTriple = match ($arch) {
+                'arm64', 'aarch64' => 'aarch64-apple-darwin',
+                'x86_64' => 'x86_64-apple-darwin',
+                default => "{$arch}-apple-darwin",
+            };
+            $args[] = "--host={$hostTriple}";
+        }
+
+        return $args;
     }
 
     /**
