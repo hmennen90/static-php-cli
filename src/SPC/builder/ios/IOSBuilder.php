@@ -146,11 +146,17 @@ class IOSBuilder extends MacOSBuilder
             . '--with-valgrind=no '
             . '--enable-shared=no --enable-static=yes '
             . '--disable-all --disable-phpdbg '
-            . '--disable-fpm --disable-cli --disable-cgi --disable-opcache-jit '
-            // iOS forbids W^X violations: SLJIT (used by PCRE2 JIT) calls
-            // pthread_jit_write_protect_np which requires the `dynamic-codesigning`
-            // entitlement only available to authorised apps. Easier to compile
-            // it out entirely. PHP defaults --with-pcre-jit to "yes".
+            . '--disable-fpm --disable-cli --disable-cgi '
+            // OPcache JIT is dropped (W^X violations are forbidden on iOS:
+            // pthread_jit_write_protect_np needs the dynamic-codesigning
+            // entitlement). NOTE: there is no --disable-opcache in PHP 8.5+ -
+            // OPcache is always compiled in. Its MINIT creates a lock file
+            // under /tmp, which the iOS sandbox rejects; the embedding app
+            // must therefore disable OPcache at runtime via the embed SAPI's
+            // ini_defaults hook (opcache.enable=0 + opcache.lockfile_path
+            // pointed at the app's tmp dir). See the iOS wrapper's PHPRuntime.
+            // SLJIT/PCRE2 JIT is dropped for the same W^X reason.
+            . '--disable-opcache-jit '
             . '--without-pcre-jit '
             . '--disable-dl-test '
         );
