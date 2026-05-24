@@ -36,6 +36,13 @@ class GlobalEnvManager
             throw new SPCInternalException('You must include src/globals/internal-env.php before using GlobalEnvManager');
         }
 
+        // iOS prep: when SPC_TARGET=ios-*, prime SDK / CC / CFLAGS *before*
+        // env.ini's [macos] block runs, so the iOS values stick (the loop
+        // below only sets vars that are currently unset).
+        if (PHP_OS_FAMILY === 'Darwin' && str_starts_with((string) getenv('SPC_TARGET'), 'ios')) {
+            \SPC\builder\ios\IOSBuilder::primeIOSEnvironment();
+        }
+
         // Define env vars for unix
         if (is_unix()) {
             self::addPathIfNotExists(BUILD_BIN_PATH);

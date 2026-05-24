@@ -34,6 +34,10 @@ class SPCTarget
         }
         // if SPC_LIBC is set, it means the target is static, remove it when 3.0 is released
         if ($target = getenv('SPC_TARGET')) {
+            // iOS is always linked statically (no dynamic linker for libphp on iOS).
+            if (str_starts_with($target, 'ios')) {
+                return true;
+            }
             if (str_contains($target, '-macos') || str_contains($target, '-native') && PHP_OS_FAMILY === 'Darwin') {
                 return false;
             }
@@ -122,9 +126,23 @@ class SPCTarget
         return match (true) {
             str_contains($target, '-linux') => 'Linux',
             str_contains($target, '-macos') => 'Darwin',
+            // iOS targets are still 'Darwin' from a build-machinery perspective:
+            // same clang, same SDK style, same library link conventions.
+            // Slice-specific differences (SDK path, version-min flags) are
+            // handled in IOSBuilder by env injection.
+            str_starts_with($target, 'ios') => 'Darwin',
             str_contains($target, '-windows') => 'Windows',
             str_contains($target, '-native') => PHP_OS_FAMILY,
             default => PHP_OS_FAMILY,
         };
+    }
+
+    /**
+     * Returns true if the current target is an iOS / iPadOS slice
+     * (ios-arm64, ios-simulator-arm64, ios-simulator-x86_64).
+     */
+    public static function isIOS(): bool
+    {
+        return str_starts_with((string) getenv('SPC_TARGET'), 'ios');
     }
 }

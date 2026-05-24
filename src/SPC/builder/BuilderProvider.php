@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SPC\builder;
 
 use SPC\builder\freebsd\BSDBuilder;
+use SPC\builder\ios\IOSBuilder;
 use SPC\builder\linux\LinuxBuilder;
 use SPC\builder\macos\MacOSBuilder;
 use SPC\builder\windows\WindowsBuilder;
@@ -23,13 +24,20 @@ class BuilderProvider
     {
         ini_set('memory_limit', '4G');
 
-        self::$builder = match (PHP_OS_FAMILY) {
-            'Windows' => new WindowsBuilder($input->getOptions()),
-            'Darwin' => new MacOSBuilder($input->getOptions()),
-            'Linux' => new LinuxBuilder($input->getOptions()),
-            'BSD' => new BSDBuilder($input->getOptions()),
-            default => throw new WrongUsageException('Current OS "' . PHP_OS_FAMILY . '" is not supported yet'),
-        };
+        // iOS / iPadOS cross-compile from a Darwin host.
+        // Trigger: SPC_TARGET starts with 'ios-' (e.g. ios-arm64, ios-simulator-arm64).
+        $spcTarget = (string) getenv('SPC_TARGET');
+        if (PHP_OS_FAMILY === 'Darwin' && str_starts_with($spcTarget, 'ios')) {
+            self::$builder = new IOSBuilder($input->getOptions());
+        } else {
+            self::$builder = match (PHP_OS_FAMILY) {
+                'Windows' => new WindowsBuilder($input->getOptions()),
+                'Darwin' => new MacOSBuilder($input->getOptions()),
+                'Linux' => new LinuxBuilder($input->getOptions()),
+                'BSD' => new BSDBuilder($input->getOptions()),
+                default => throw new WrongUsageException('Current OS "' . PHP_OS_FAMILY . '" is not supported yet'),
+            };
+        }
 
         // bind the builder to ExceptionHandler
         ExceptionHandler::bindBuilder(self::$builder);
