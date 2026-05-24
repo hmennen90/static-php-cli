@@ -219,6 +219,27 @@ CMAKE;
         if (PHP_OS_FAMILY === 'Linux') {
             $toolchain .= "\nSET(CMAKE_AR \"ar\")";
         }
+        // iOS cross-compile: clang's --target=arm64-apple-ios14.0 trips
+        // CMake into picking /usr/bin/gcc-ar as CMAKE_C_COMPILER_AR, which
+        // emits GNU-format archives (with a '/' symbol table member) that
+        // Apple's ld then rejects with
+        //   "ld: archive member '/' not a mach-o file"
+        // Pin both AR and RANLIB to the toolchain's Mach-O native binaries
+        // so static archives stay in BSD/Mach-O format.
+        if (PHP_OS_FAMILY === 'Darwin' && \SPC\util\SPCTarget::isIOS()) {
+            $ar = trim((string) shell_exec('xcrun --sdk iphoneos --find ar'));
+            $ranlib = trim((string) shell_exec('xcrun --sdk iphoneos --find ranlib'));
+            if ($ar !== '') {
+                $toolchain .= "\nSET(CMAKE_AR \"{$ar}\" CACHE FILEPATH \"\" FORCE)";
+                $toolchain .= "\nSET(CMAKE_C_COMPILER_AR \"{$ar}\" CACHE FILEPATH \"\" FORCE)";
+                $toolchain .= "\nSET(CMAKE_CXX_COMPILER_AR \"{$ar}\" CACHE FILEPATH \"\" FORCE)";
+            }
+            if ($ranlib !== '') {
+                $toolchain .= "\nSET(CMAKE_RANLIB \"{$ranlib}\" CACHE FILEPATH \"\" FORCE)";
+                $toolchain .= "\nSET(CMAKE_C_COMPILER_RANLIB \"{$ranlib}\" CACHE FILEPATH \"\" FORCE)";
+                $toolchain .= "\nSET(CMAKE_CXX_COMPILER_RANLIB \"{$ranlib}\" CACHE FILEPATH \"\" FORCE)";
+            }
+        }
         FileSystem::writeFile(SOURCE_PATH . '/toolchain.cmake', $toolchain);
         return $created = realpath(SOURCE_PATH . '/toolchain.cmake');
     }
