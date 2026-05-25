@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SPC\Tests\util;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use SPC\util\SPCTarget;
 
 /**
@@ -34,9 +35,7 @@ final class SPCTargetTest extends TestBase
         }
     }
 
-    /**
-     * @dataProvider libcProvider
-     */
+    #[DataProvider('libcProvider')]
     public function testGetLibc(string $libc, bool $expected): void
     {
         putenv("SPC_LIBC={$libc}");
@@ -50,9 +49,7 @@ final class SPCTargetTest extends TestBase
         }
     }
 
-    /**
-     * @dataProvider libcProvider
-     */
+    #[DataProvider('libcProvider')]
     public function testGetLibcVersion(string $libc): void
     {
         putenv("SPC_LIBC={$libc}");
@@ -62,9 +59,7 @@ final class SPCTargetTest extends TestBase
         $this->assertIsStringOrNull($result);
     }
 
-    /**
-     * @dataProvider targetOSProvider
-     */
+    #[DataProvider('targetOSProvider')]
     public function testGetTargetOS(string $target, string $expected): void
     {
         putenv("SPC_TARGET={$target}");
@@ -80,7 +75,7 @@ final class SPCTargetTest extends TestBase
         $this->assertContains('glibc', SPCTarget::LIBC_LIST);
     }
 
-    public function libcProvider(): array
+    public static function libcProvider(): array
     {
         return [
             'musl' => ['musl', true],
@@ -89,7 +84,7 @@ final class SPCTargetTest extends TestBase
         ];
     }
 
-    public function targetOSProvider(): array
+    public static function targetOSProvider(): array
     {
         return [
             'linux-target' => ['native-linux', 'Linux'],

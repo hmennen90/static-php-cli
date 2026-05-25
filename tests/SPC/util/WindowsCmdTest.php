@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SPC\Tests\util;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use SPC\exception\SPCInternalException;
 use SPC\util\shell\WindowsCmd;
 
@@ -24,9 +25,7 @@ final class WindowsCmdTest extends TestBase
         new WindowsCmd();
     }
 
-    /**
-     * @dataProvider commandProvider
-     */
+    #[DataProvider('commandProvider')]
     public function testExecWithResult(string $command): void
     {
         if (PHP_OS_FAMILY !== 'Windows') {

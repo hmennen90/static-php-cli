@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SPC\Tests\util;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use SPC\exception\SPCInternalException;
 use SPC\util\GlobalEnvManager;
@@ -52,9 +53,7 @@ final class GlobalEnvManagerTest extends TestCase
         $this->assertIsArray($result);
     }
 
-    /**
-     * @dataProvider envVariableProvider
-     */
+    #[DataProvider('envVariableProvider')]
     public function testPutenv(string $envVar): void
     {
         // Test putenv functionality
@@ -65,9 +64,7 @@ final class GlobalEnvManagerTest extends TestCase
         $this->assertEquals(explode('=', $envVar, 2)[1], getenv(explode('=', $envVar, 2)[0]));
     }
 
-    /**
-     * @dataProvider pathProvider
-     */
+    #[DataProvider('pathProvider')]
     public function testAddPathIfNotExistsOnUnix(string $path): void
     {
         if (PHP_OS_FAMILY === 'Windows') {
@@ -81,9 +78,7 @@ final class GlobalEnvManagerTest extends TestCase
         $this->assertStringContainsString($path, $newPath);
     }
 
-    /**
-     * @dataProvider pathProvider
-     */
+    #[DataProvider('pathProvider')]
     public function testAddPathIfNotExistsWhenPathAlreadyExists(string $path): void
     {
         if (PHP_OS_FAMILY === 'Windows') {
@@ -121,7 +116,7 @@ final class GlobalEnvManagerTest extends TestCase
         $this->assertTrue(true); // Test passes if no exception is thrown
     }
 
-    public function envVariableProvider(): array
+    public static function envVariableProvider(): array
     {
         return [
             'simple-env' => ['TEST_VAR=test_value'],
@@ -131,7 +126,7 @@ final class GlobalEnvManagerTest extends TestCase
         ];
     }
 
-    public function pathProvider(): array
+    public static function pathProvider(): array
     {
         return [
             'simple-path' => ['/test/path'],
