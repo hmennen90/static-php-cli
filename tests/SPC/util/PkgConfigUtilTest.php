@@ -54,7 +54,7 @@ final class PkgConfigUtilTest extends TestCase
     }
 
     #[DataProvider('validPackageProvider')]
-    public function testGetCflagsWithValidPackage(string $package, string $expectedCflags): void
+    public function testGetCflagsWithValidPackage(string $package, string $expectedCflags, array $expectedLibs): void
     {
         $result = PkgConfigUtil::getCflags($package);
         $this->assertEquals($expectedCflags, $result);

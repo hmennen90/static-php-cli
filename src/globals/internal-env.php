@@ -9,6 +9,12 @@ use SPC\builder\windows\SystemUtil as WindowsSystemUtil;
 use SPC\ConsoleApplication;
 use SPC\store\FileSystem;
 
+// Idempotent: a re-include must not redefine constants - PHPUnit 12 fails the
+// suite on the resulting "already defined" warnings.
+if (defined('SPC_VERSION')) {
+    return;
+}
+
 // static-php-cli version string
 const SPC_VERSION = ConsoleApplication::VERSION;
 // output path for everything, other paths are defined relative to this by default

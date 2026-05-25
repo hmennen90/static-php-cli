@@ -4,6 +4,13 @@ declare(strict_types=1);
 
 use ZM\Logger\ConsoleLogger;
 
+// Idempotent: a re-include (e.g. a test loading this file again when the
+// constants are already set) must not redefine them - PHPUnit 12 treats the
+// resulting "already defined" notices as warnings and fails the suite.
+if (defined('WORKING_DIR')) {
+    return;
+}
+
 define('WORKING_DIR', getcwd());
 define('ROOT_DIR', dirname(__DIR__, 2));
 putenv('WORKING_DIR=' . WORKING_DIR);

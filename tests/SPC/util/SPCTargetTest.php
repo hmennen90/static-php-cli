@@ -50,7 +50,7 @@ final class SPCTargetTest extends TestBase
     }
 
     #[DataProvider('libcProvider')]
-    public function testGetLibcVersion(string $libc): void
+    public function testGetLibcVersion(string $libc, bool $expected): void
     {
         putenv("SPC_LIBC={$libc}");
 
