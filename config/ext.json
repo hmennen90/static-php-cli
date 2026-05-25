@@ -389,7 +389,8 @@
     },
     "intl": {
         "support": {
-            "BSD": "wip"
+            "BSD": "wip",
+            "iOS": "yes"
         },
         "type": "builtin",
         "lib-depends-unix": [
