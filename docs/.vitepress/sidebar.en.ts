@@ -18,6 +18,7 @@ export default {
             items: [
                 {text: 'Troubleshooting', link: '/en/guide/troubleshooting'},
                 {text: 'Build on Windows', link: '/en/guide/build-on-windows'},
+                {text: 'Build for iOS', link: '/en/guide/build-for-ios'},
                 {text: 'Build with GNU libc', link: '/en/guide/build-with-glibc'},
             ],
         }

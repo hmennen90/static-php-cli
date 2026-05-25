@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SPC\Tests\util;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use SPC\exception\EnvironmentException;
 use SPC\util\shell\UnixShell;
 
@@ -24,9 +25,7 @@ final class UnixShellTest extends TestBase
         new UnixShell();
     }
 
-    /**
-     * @dataProvider envProvider
-     */
+    #[DataProvider('envProvider')]
     public function testSetEnv(array $env): void
     {
         if (PHP_OS_FAMILY === 'Windows') {
@@ -44,9 +43,7 @@ final class UnixShellTest extends TestBase
         }
     }
 
-    /**
-     * @dataProvider envProvider
-     */
+    #[DataProvider('envProvider')]
     public function testAppendEnv(array $env): void
     {
         if (PHP_OS_FAMILY === 'Windows') {
@@ -66,9 +63,7 @@ final class UnixShellTest extends TestBase
         }
     }
 
-    /**
-     * @dataProvider envProvider
-     */
+    #[DataProvider('envProvider')]
     public function testGetEnvString(array $env): void
     {
         if (PHP_OS_FAMILY === 'Windows') {
@@ -106,9 +101,7 @@ final class UnixShellTest extends TestBase
         $this->assertEquals('', trim($envString));
     }
 
-    /**
-     * @dataProvider commandProvider
-     */
+    #[DataProvider('commandProvider')]
     public function testExecWithResult(string $command): void
     {
         if (PHP_OS_FAMILY === 'Windows') {

@@ -36,11 +36,13 @@ class glfw extends LinuxLibraryBase
         foreach ($libDirs as $libDir) {
             foreach ($prefixes as $prefix) {
                 foreach (glob("{$libDir}/{$prefix}*") as $lib) {
-                    if (!is_file($lib) && !is_link($lib)) continue;
+                    if (!is_file($lib) && !is_link($lib)) {
+                        continue;
+                    }
                     $dst = BUILD_ROOT_PATH . '/lib/' . basename($lib);
                     if (!file_exists($dst)) {
                         @symlink($lib, $dst);
-                        $linked++;
+                        ++$linked;
                     }
                 }
             }

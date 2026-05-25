@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SPC\Tests\util;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use SPC\exception\ExecutionException;
 use SPC\util\PkgConfigUtil;
@@ -52,36 +53,28 @@ final class PkgConfigUtilTest extends TestCase
         parent::tearDownAfterClass();
     }
 
-    /**
-     * @dataProvider validPackageProvider
-     */
-    public function testGetCflagsWithValidPackage(string $package, string $expectedCflags): void
+    #[DataProvider('validPackageProvider')]
+    public function testGetCflagsWithValidPackage(string $package, string $expectedCflags, array $expectedLibs): void
     {
         $result = PkgConfigUtil::getCflags($package);
         $this->assertEquals($expectedCflags, $result);
     }
 
-    /**
-     * @dataProvider validPackageProvider
-     */
+    #[DataProvider('validPackageProvider')]
     public function testGetLibsArrayWithValidPackage(string $package, string $expectedCflags, array $expectedLibs): void
     {
         $result = PkgConfigUtil::getLibsArray($package);
         $this->assertEquals($expectedLibs, $result);
     }
 
-    /**
-     * @dataProvider invalidPackageProvider
-     */
+    #[DataProvider('invalidPackageProvider')]
     public function testGetCflagsWithInvalidPackage(string $package): void
     {
         $this->expectException(ExecutionException::class);
         PkgConfigUtil::getCflags($package);
     }
 
-    /**
-     * @dataProvider invalidPackageProvider
-     */
+    #[DataProvider('invalidPackageProvider')]
     public function testGetLibsArrayWithInvalidPackage(string $package): void
     {
         $this->expectException(ExecutionException::class);

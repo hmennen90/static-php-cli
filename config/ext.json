@@ -245,7 +245,8 @@
             "Windows": "yes",
             "BSD": "no",
             "Linux": "yes",
-            "Darwin": "yes"
+            "Darwin": "yes",
+            "iOS": "yes"
         },
         "type": "external",
         "arg-type": "custom",
@@ -263,6 +264,10 @@
         ],
         "lib-depends-windows": [
             "glfw",
+            "glslang",
+            "spirv-cross"
+        ],
+        "lib-depends-ios": [
             "glslang",
             "spirv-cross"
         ],
@@ -384,7 +389,8 @@
     },
     "intl": {
         "support": {
-            "BSD": "wip"
+            "BSD": "wip",
+            "iOS": "yes"
         },
         "type": "builtin",
         "lib-depends-unix": [

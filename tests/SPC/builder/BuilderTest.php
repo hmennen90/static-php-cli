@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SPC\Tests\builder;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use SPC\builder\BuilderBase;
 use SPC\builder\BuilderProvider;
@@ -159,9 +160,7 @@ class BuilderTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider providerGetBuildTypeName
-     */
+    #[DataProvider('providerGetBuildTypeName')]
     public function testGetBuildTypeName(int $target, string $name): void
     {
         $this->assertEquals($name, $this->builder->getBuildTypeName($target));
@@ -223,9 +222,7 @@ class BuilderTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider providerEmitPatchPoint
-     */
+    #[DataProvider('providerEmitPatchPoint')]
     public function testEmitPatchPoint(string $point)
     {
         $code = '<?php if (patch_point() === "' . $point . '") echo "GOOD:' . $point . '";';
