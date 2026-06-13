@@ -774,23 +774,43 @@ class FileSystem
     }
 
     /**
-     * Extract a .tar.(xz|gz|bz2) on Windows using ONLY 7za, stripping the single
-     * top-level directory. This replaces the old `7za x -so … | tar -f - -x …`
-     * pipe, which relied on an external `tar` in the pipeline — on the GitHub
+     * Extract a .tar.(xz|gz|bz2) on Windows, stripping the single top-level
+     * directory (the `--strip-components 1` equivalent).
+     *
+     * This replaces the old `7za x -so … | tar -f - -x …` pipe. On the GitHub
      * windows-2025 runner that pipe began failing with "The system cannot find
-     * the path specified", silently producing an EMPTY php-src (and a later,
-     * confusing TypeError in the libxml patch hook). 7za handles both the outer
-     * compression and the inner tar, so no external tar is needed.
+     * the path specified", silently producing an EMPTY php-src (and later a
+     * confusing TypeError in the libxml patch hook). The root cause is that
+     * php-sdk-binary-tools/bin/7za.exe is no longer present at the expected path
+     * on the new image.
+     *
+     * Primary path: Windows-native `tar` (bsdtar, shipped in System32 since
+     * Windows 10/Server 2019) handles xz/gz/bz2 directly — the same `tar -xf`
+     * the Linux/macOS branch already uses. We accept it as long as it actually
+     * populated the target, ignoring the non-zero exit code bsdtar returns when
+     * it merely warns about a symlink entry it can't create. Only if the target
+     * is still empty do we fall back to a 7za two-step (kept for older images
+     * that still ship 7za but lack a working tar).
      */
     private static function extractTarArchiveWindows(string $filename, string $target, string $_7z): void
     {
         $filename = self::convertPath($filename);
-        $mute = defined('DEBUG_MODE') ? '' : ' > NUL';
+        $target = self::convertPath($target);
 
-        // Step 1: 7za decompresses the outer layer (.xz/.gz/.bz2) → a .tar file.
+        // Primary: native tar (bsdtar) reading the file directly.
+        cmd()->execWithResult("tar -xf \"{$filename}\" -C \"{$target}\" --strip-components 1");
+        $extracted = self::scanDirFiles($target, false, true, true);
+        if ($extracted !== false && $extracted !== []) {
+            return;
+        }
+
+        logger()->warning('native tar produced no files, falling back to 7za two-step: ' . $filename);
+
+        // Fallback: 7za decompresses the outer layer (.xz/.gz/.bz2) → a .tar,
+        // then unpacks the .tar into a temp dir, then strip-move into the target.
         $tmp1 = self::convertPath(sys_get_temp_dir() . '/spc_untar_' . bin2hex(random_bytes(16)));
         self::createDir($tmp1);
-        f_passthru("\"{$_7z}\" x \"{$filename}\" -o\"{$tmp1}\" -y{$mute}");
+        f_passthru("\"{$_7z}\" x \"{$filename}\" -o\"{$tmp1}\" -y");
 
         $tarFiles = glob(self::convertPath("{$tmp1}/*.tar")) ?: [];
         if ($tarFiles === []) {
@@ -799,11 +819,9 @@ class FileSystem
         }
         $tarFile = self::convertPath($tarFiles[0]);
 
-        // Step 2: 7za unpacks the .tar into a second temp dir, then strip-move
-        // its single top-level directory into the target (--strip-components 1).
         $tmp2 = self::convertPath(sys_get_temp_dir() . '/spc_untar_' . bin2hex(random_bytes(16)));
         self::createDir($tmp2);
-        f_passthru("\"{$_7z}\" x \"{$tarFile}\" -o\"{$tmp2}\" -y{$mute}");
+        f_passthru("\"{$_7z}\" x \"{$tarFile}\" -o\"{$tmp2}\" -y");
 
         self::removeDir($tmp1);
         self::stripMoveTopLevel($tmp2, $target);
