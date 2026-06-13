@@ -639,7 +639,7 @@ class FileSystem
             // Yeah, I will be an MS HATER !
             match (self::extname($filename)) {
                 'tar' => f_passthru("tar -xf {$filename} -C {$target} --strip-components 1"),
-                'xz', 'txz', 'gz', 'tgz', 'bz2' => cmd()->execWithResult("\"{$_7z}\" x -so {$filename} | tar -f - -x -C \"{$target}\" --strip-components 1"),
+                'xz', 'txz', 'gz', 'tgz', 'bz2' => self::extractTarArchiveWindows($filename, $target, $_7z),
                 'zip' => self::unzipWithStrip($filename, $target),
                 default => throw new FileSystemException("unknown archive format: {$filename}"),
             };
@@ -707,10 +707,24 @@ class FileSystem
             $mute = defined('DEBUG_MODE') ? '' : ' > /dev/null';
             f_passthru("unzip \"{$zip_file}\" -d \"{$temp_dir}\"{$mute}");
         }
+        self::stripMoveTopLevel($temp_dir, $extract_path);
+    }
+
+    /**
+     * Move the contents of a freshly-extracted temp dir into $extract_path,
+     * stripping a single top-level directory (the `--strip-components 1`
+     * equivalent), then delete the temp dir. Shared by {@see unzipWithStrip} and
+     * the Windows tar extractor.
+     */
+    private static function stripMoveTopLevel(string $temp_dir, string $extract_path): void
+    {
+        $temp_dir = self::convertPath($temp_dir);
+        $extract_path = self::convertPath($extract_path);
+
         // scan first level dirs (relative, not recursive, include dirs)
         $contents = self::scanDirFiles($temp_dir, false, true, true);
         if ($contents === false) {
-            throw new FileSystemException('Cannot scan unzip temp dir: ' . $temp_dir);
+            throw new FileSystemException('Cannot scan extract temp dir: ' . $temp_dir);
         }
         // if extract path already exists, remove it
         if (is_dir($extract_path)) {
@@ -739,7 +753,7 @@ class FileSystem
             if ($dircount === 1) {
                 $sub_contents = self::scanDirFiles("{$temp_dir}/{$dir[0]}", false, true, true);
                 if ($sub_contents === false) {
-                    throw new FileSystemException("Cannot scan unzip temp sub-dir: {$dir[0]}");
+                    throw new FileSystemException("Cannot scan extract temp sub-dir: {$dir[0]}");
                 }
                 foreach ($sub_contents as $sub_item) {
                     self::moveFileOrDir(self::convertPath("{$temp_dir}/{$dir[0]}/{$sub_item}"), self::convertPath("{$extract_path}/{$sub_item}"));
@@ -757,5 +771,41 @@ class FileSystem
 
         // Clean up temp directory
         self::removeDir($temp_dir);
+    }
+
+    /**
+     * Extract a .tar.(xz|gz|bz2) on Windows using ONLY 7za, stripping the single
+     * top-level directory. This replaces the old `7za x -so … | tar -f - -x …`
+     * pipe, which relied on an external `tar` in the pipeline — on the GitHub
+     * windows-2025 runner that pipe began failing with "The system cannot find
+     * the path specified", silently producing an EMPTY php-src (and a later,
+     * confusing TypeError in the libxml patch hook). 7za handles both the outer
+     * compression and the inner tar, so no external tar is needed.
+     */
+    private static function extractTarArchiveWindows(string $filename, string $target, string $_7z): void
+    {
+        $filename = self::convertPath($filename);
+        $mute = defined('DEBUG_MODE') ? '' : ' > NUL';
+
+        // Step 1: 7za decompresses the outer layer (.xz/.gz/.bz2) → a .tar file.
+        $tmp1 = self::convertPath(sys_get_temp_dir() . '/spc_untar_' . bin2hex(random_bytes(16)));
+        self::createDir($tmp1);
+        f_passthru("\"{$_7z}\" x \"{$filename}\" -o\"{$tmp1}\" -y{$mute}");
+
+        $tarFiles = glob(self::convertPath("{$tmp1}/*.tar")) ?: [];
+        if ($tarFiles === []) {
+            self::removeDir($tmp1);
+            throw new FileSystemException("7za produced no .tar from archive: {$filename}");
+        }
+        $tarFile = self::convertPath($tarFiles[0]);
+
+        // Step 2: 7za unpacks the .tar into a second temp dir, then strip-move
+        // its single top-level directory into the target (--strip-components 1).
+        $tmp2 = self::convertPath(sys_get_temp_dir() . '/spc_untar_' . bin2hex(random_bytes(16)));
+        self::createDir($tmp2);
+        f_passthru("\"{$_7z}\" x \"{$tarFile}\" -o\"{$tmp2}\" -y{$mute}");
+
+        self::removeDir($tmp1);
+        self::stripMoveTopLevel($tmp2, $target);
     }
 }
