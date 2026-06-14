@@ -602,13 +602,7 @@ class SourcePatcher
 
     public static function patchPhpLibxml212(): bool
     {
-        $version_header = SOURCE_PATH . '/php-src/main/php_version.h';
-        $file = file_get_contents($version_header);
-        if ($file === false) {
-            throw new FileSystemException(
-                "php-src not extracted (missing {$version_header}) — source extraction failed earlier",
-            );
-        }
+        $file = file_get_contents(SOURCE_PATH . '/php-src/main/php_version.h');
         if (preg_match('/PHP_VERSION_ID (\d+)/', $file, $match) !== 0) {
             $ver_id = intval($match[1]);
             if ($ver_id < 80000) {
