@@ -331,6 +331,17 @@ class WindowsBuilder extends BuilderBase
 
         // sanity check for phpmicro
         if (($build_target & BUILD_TARGET_MICRO) === BUILD_TARGET_MICRO) {
+            // micro.sfx links the vio/vulkan extension, which loads its kept
+            // runtime DLLs (vulkan-1.dll) at process start. The test stubs below
+            // run from SOURCE_PATH, so copy those DLLs next to them — otherwise
+            // the process fails to initialize with exit code 0xC0000135
+            // (STATUS_DLL_NOT_FOUND) before any PHP code runs, failing the check.
+            foreach ($runtime_dll_keeplist as $dll) {
+                $dll_src = BUILD_BIN_PATH . DIRECTORY_SEPARATOR . $dll;
+                if (file_exists($dll_src)) {
+                    copy($dll_src, SOURCE_PATH . DIRECTORY_SEPARATOR . $dll);
+                }
+            }
             $test_task = $this->getMicroTestTasks();
             foreach ($test_task as $task_name => $task) {
                 $test_file = SOURCE_PATH . '/' . $task_name . '.exe';
