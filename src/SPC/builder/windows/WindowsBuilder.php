@@ -293,6 +293,54 @@ class WindowsBuilder extends BuilderBase
     }
 
     /**
+     * Locate d3dcompiler_47.dll (the HLSL runtime compiler, shipped with the
+     * Windows SDK / DirectX redist) and copy it into buildroot/bin/ so it sits
+     * alongside php.exe / micro.sfx. The d3d11/d3d12 vio backends hard-link
+     * D3DCompile, making this DLL a load-time dependency; a clean Windows
+     * install does not have it, so it must be bundled (mirrors vulkan-1.dll).
+     */
+    private function stageD3DCompilerDll(): void
+    {
+        $dest = BUILD_BIN_PATH . '\d3dcompiler_47.dll';
+        if (file_exists($dest)) {
+            return;
+        }
+
+        $candidates = [];
+        // 1. The DirectX redist folder of every installed Windows SDK.
+        // 2. The per-version SDK bin folder (x64).
+        foreach (['C:\Program Files (x86)\Windows Kits\10', 'C:\Program Files\Windows Kits\10'] as $kit) {
+            $candidates[] = $kit . '\Redist\D3D\x64\d3dcompiler_47.dll';
+            foreach ((glob($kit . '\Redist\*\D3D\x64\d3dcompiler_47.dll') ?: []) as $c) {
+                $candidates[] = $c;
+            }
+            foreach ((glob($kit . '\bin\*\x64\d3dcompiler_47.dll') ?: []) as $c) {
+                $candidates[] = $c;
+            }
+        }
+        // 3. The Visual Studio VC redist (also carries it).
+        $vs = SystemUtil::findVisualStudio();
+        if ($vs !== false && isset($vs['dir'])) {
+            foreach ((glob($vs['dir'] . '\VC\Redist\MSVC\*\x64\Microsoft.VC*.CRT\d3dcompiler_47.dll') ?: []) as $c) {
+                $candidates[] = $c;
+            }
+        }
+        // 4. Last resort: the system DLL present on the runner image itself.
+        $candidates[] = 'C:\Windows\System32\d3dcompiler_47.dll';
+
+        foreach ($candidates as $src) {
+            if (file_exists($src)) {
+                FileSystem::createDir(BUILD_BIN_PATH);
+                copy($src, $dest);
+                logger()->info('Staged d3dcompiler_47.dll from: ' . $src);
+                return;
+            }
+        }
+
+        logger()->warning('d3dcompiler_47.dll not found in any SDK/redist location — d3d11/d3d12 backends will fail to start on a clean Windows install.');
+    }
+
+    /**
      * Run extension and PHP cli and micro check
      */
     public function sanityCheck(mixed $build_target): void
@@ -302,11 +350,20 @@ class WindowsBuilder extends BuilderBase
         //
         // Exception: keep DLLs that libraries intentionally place here as
         // runtime dependencies (vulkan-loader is shipped as vulkan-1.dll
-        // because the static loader has broken ICD discovery). Deleting them
-        // here would also strip them from `spc micro:combine` output dirs.
+        // because the static loader has broken ICD discovery; d3dcompiler_47.dll
+        // because the d3d11/d3d12 vio backends compile HLSL at runtime via
+        // D3DCompile and link it as a hard load-time import — without it the
+        // shipped exe fails to start with 0xC0000135 STATUS_DLL_NOT_FOUND on a
+        // clean Windows install). Deleting them here would also strip them from
+        // `spc micro:combine` output dirs.
         $runtime_dll_keeplist = [
             'vulkan-1.dll',
+            'd3dcompiler_47.dll',
         ];
+        // d3dcompiler_47.dll is a Microsoft redistributable that ships with the
+        // Windows SDK, not something we build — stage it into buildroot/bin/ so
+        // the keeplist preserves it and the CI upload step ships it.
+        $this->stageD3DCompilerDll();
         logger()->debug('Removing leftover .dll files from buildroot/bin/ (keep: ' . implode(', ', $runtime_dll_keeplist) . ')');
         $dlls = glob(BUILD_BIN_PATH . '\*.dll');
         foreach ($dlls as $dll) {
