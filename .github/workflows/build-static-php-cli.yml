@@ -49,7 +49,7 @@ jobs:
             extensions: "glfw,mbstring,zip,phar,intl"
             steam: false
           - name: steam
-            extensions: "glfw,mbstring,zip,phar,steamworks,intl"
+            extensions: "glfw,mbstring,zip,phar,steamworks,intl,gd"
             steam: true
         exclude:
           - os: { name: linux-aarch64 }
@@ -209,7 +209,7 @@ jobs:
 
           **PHP Version:** 8.5
           **Extensions (base):** glfw, vio, vulkan, metal (macOS), mbstring, zip, phar
-          **Extensions (steam):** glfw, vio, vulkan, metal (macOS), mbstring, zip, phar, steamworks
+          **Extensions (steam):** glfw, vio, vulkan, metal (macOS), mbstring, zip, phar, steamworks, intl, gd (freetype)
 
           Built by workflow run [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" \
             release-files/*.zip

@@ -197,7 +197,8 @@
         "arg-type-windows": "with",
         "lib-depends": [
             "zlib",
-            "libpng"
+            "libpng",
+            "freetype"
         ],
         "ext-depends": [
             "zlib"
