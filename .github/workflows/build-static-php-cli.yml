@@ -140,6 +140,21 @@ jobs:
           name: vulkan-1-dll-${{ matrix.variant.name }}-8.5-${{ matrix.os.name }}
           path: buildroot/bin/vulkan-1.dll
 
+      # The d3d11/d3d12 vio backends hard-import D3DCOMPILER_47.dll (runtime HLSL
+      # compile). It is a redistributable MS SDK DLL present on the runner, not
+      # something spc builds, so stage it from System32 alongside vulkan-1.dll.
+      - name: "Stage d3dcompiler_47.dll (Windows)"
+        if: matrix.os.platform == 'windows'
+        shell: pwsh
+        run: Copy-Item "$env:SystemRoot\System32\d3dcompiler_47.dll" -Destination buildroot/bin/d3dcompiler_47.dll
+
+      - name: "Upload d3dcompiler_47.dll (Windows)"
+        if: matrix.os.platform == 'windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: d3dcompiler-47-dll-${{ matrix.variant.name }}-8.5-${{ matrix.os.name }}
+          path: buildroot/bin/d3dcompiler_47.dll
+
       - name: "Upload libsteam_api"
         if: matrix.variant.steam
         uses: actions/upload-artifact@v4
@@ -172,6 +187,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           pattern: vulkan-1-dll-*-8.5-*
+          path: release-assets/
+
+      - name: "Download d3dcompiler_47.dll artifacts"
+        uses: actions/download-artifact@v4
+        with:
+          pattern: d3dcompiler-47-dll-*-8.5-*
           path: release-assets/
 
       - name: "Download libsteam artifacts"
