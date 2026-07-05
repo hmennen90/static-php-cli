@@ -91,9 +91,22 @@ class vio extends Extension
         // fontstash.h, so no duplicate symbol conflict occurs.
         if ($hasGlfwExt && file_exists($configM4)) {
             $m4Content = file_get_contents($configM4);
-            // Remove vendor/* lines EXCEPT stb_truetype_impl.c from PHP_NEW_EXTENSION.
+            // Remove vendor/* sources that duplicate php-glfw's (glad, stb_image,
+            // stb_image_write, miniaudio) from PHP_NEW_EXTENSION. KEEP the ones
+            // php-glfw does not provide and vio needs:
+            //   - stb_truetype_impl.c : shared stbtt, made static via STBTT_STATIC
+            //     (removing it crashes; see the fontstash patch above).
+            //   - stb_rect_pack_impl.c + sheenbidi/Source/SheenBidi.c : referenced
+            //     by vio_text_shape.c once --with-harfbuzz enables shaping. php-glfw
+            //     exports neither (the symbols link as UNDEFINED, not duplicate),
+            //     so keeping them is safe and required — without it the static
+            //     micro link fails with undefined stbrp_*/SB* on Linux+macOS.
             // Matches: " \<newline><whitespace>vendor/path" - whitespace-agnostic.
-            $m4Content = preg_replace('/ \\\\\n\s*vendor\/(?!stb\/stb_truetype_impl\.c)[^,\s]+/', '', $m4Content);
+            $m4Content = preg_replace(
+                '/ \\\\\n\s*vendor\/(?!stb\/stb_truetype_impl\.c)(?!stb\/stb_rect_pack_impl\.c)(?!sheenbidi\/Source\/SheenBidi\.c)[^,\s]+/',
+                '',
+                $m4Content
+            );
             file_put_contents($configM4, $m4Content);
         }
 
