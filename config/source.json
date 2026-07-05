@@ -183,7 +183,7 @@
     "ext-steamworks": {
         "type": "git",
         "url": "https://github.com/hmennen90/php-steamworks",
-        "rev": "v0.4.1",
+        "rev": "v0.5.0",
         "license": {
             "type": "file",
             "path": "LICENSE"
@@ -1374,6 +1374,15 @@
         "license": {
             "type": "file",
             "path": "LICENSE"
+        }
+    },
+    "harfbuzz": {
+        "type": "git",
+        "url": "https://github.com/harfbuzz/harfbuzz",
+        "rev": "14.2.1",
+        "license": {
+            "type": "file",
+            "path": "COPYING"
         }
     },
     "ffmpeg": {

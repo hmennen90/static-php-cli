@@ -255,18 +255,21 @@
         "lib-depends": [
             "glfw",
             "glslang",
-            "spirv-cross"
+            "spirv-cross",
+            "harfbuzz"
         ],
         "lib-depends-macos": [
             "glfw",
             "glslang",
             "spirv-cross",
-            "moltenvk"
+            "moltenvk",
+            "harfbuzz"
         ],
         "lib-depends-windows": [
             "glfw",
             "glslang",
-            "spirv-cross"
+            "spirv-cross",
+            "harfbuzz"
         ],
         "lib-depends-ios": [
             "glslang",

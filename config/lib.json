@@ -1167,6 +1167,18 @@
             "glslang"
         ]
     },
+    "harfbuzz": {
+        "source": "harfbuzz",
+        "static-libs-unix": [
+            "libharfbuzz.a"
+        ],
+        "static-libs-windows": [
+            "harfbuzz.lib"
+        ],
+        "headers": [
+            "harfbuzz"
+        ]
+    },
     "spirv-cross": {
         "source": "spirv-cross",
         "static-libs-unix": [

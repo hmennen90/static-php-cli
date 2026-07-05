@@ -341,6 +341,13 @@ class vio extends Extension
             $args .= ' --without-metal';
         }
 
+        // HarfBuzz: opt-in complex-script shaping + BiDi (Arabic, Thai, ...).
+        // config.m4 defaults --with-harfbuzz to "no", so omitting it keeps the
+        // old behaviour; we only pass it when the harfbuzz lib was built.
+        if ($this->builder->getLib('harfbuzz') !== null) {
+            $args .= ' --with-harfbuzz=' . BUILD_ROOT_PATH;
+        }
+
         return $args;
     }
 
@@ -365,6 +372,13 @@ class vio extends Extension
 
         if ($this->builder->getLib('ffmpeg') !== null) {
             $args .= ' --with-ffmpeg';
+        }
+
+        // HarfBuzz: opt-in shaping (config.w32 defaults it to "no"). A bare
+        // --with-harfbuzz sets PHP_HARFBUZZ = PHP_PHP_BUILD, so vio searches the
+        // buildroot include\/lib\ for hb.h + harfbuzz.lib.
+        if ($this->builder->getLib('harfbuzz') !== null) {
+            $args .= ' --with-harfbuzz';
         }
 
         return $args;
