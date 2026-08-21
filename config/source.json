@@ -172,18 +172,18 @@
         }
     },
     "ext-vio": {
-        "type": "git",
-        "url": "https://github.com/phpolygon/php-vio",
-        "rev": "main",
+        "type": "ghtar",
+        "repo": "phpolygon/php-vio",
+        "prefer-stable": true,
         "license": {
             "type": "file",
             "path": "LICENSE"
         }
     },
     "ext-steamworks": {
-        "type": "git",
-        "url": "https://github.com/hmennen90/php-steamworks",
-        "rev": "v0.15.0",
+        "type": "ghtar",
+        "repo": "hmennen90/php-steamworks",
+        "prefer-stable": true,
         "license": {
             "type": "file",
             "path": "LICENSE"

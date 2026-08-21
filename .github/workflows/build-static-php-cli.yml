@@ -73,7 +73,12 @@ jobs:
         if: matrix.variant.steam
         shell: bash
         run: |
-          git clone --depth 1 https://${{ github.token }}@github.com/hmennen90/php-steamworks.git /tmp/php-steamworks
+          # Pin to the same release spc resolves for ext-steamworks, so the
+          # redistributable libs cannot drift ahead of the extension source.
+          REPO=https://${{ github.token }}@github.com/hmennen90/php-steamworks.git
+          TAG=$(git ls-remote --tags --refs --sort=-v:refname "$REPO" 'v*' | head -1 | sed 's|.*/||')
+          echo "Using php-steamworks $TAG"
+          git clone --depth 1 --branch "$TAG" "$REPO" /tmp/php-steamworks
           mkdir -p source/steamworks-sdk/redistributable_bin
           cp -r /tmp/php-steamworks/sdk/redistributable_bin/* source/steamworks-sdk/redistributable_bin/
           cp -r /tmp/php-steamworks/sdk/public source/steamworks-sdk/public || true
