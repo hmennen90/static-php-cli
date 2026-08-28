@@ -116,7 +116,11 @@ RUN if [ -f /app/buildroot/bin/re2c ]; then \
         cp /app/buildroot/bin/re2c /usr/local/bin/re2c ;\
     fi
 
-RUN curl -o make.tgz -fsSL https://ftp.gnu.org/gnu/make/make-4.4.tar.gz && \
+# --ipv4: ftp.gnu.org answers with AAAA records the docker build network has no
+# route to; curl burned ~130s on them and gave up with
+# "Failed to connect to 2001:470:142:3::b: Network is unreachable" instead of
+# falling back to IPv4, which failed the whole image build.
+RUN curl -4 -o make.tgz -fsSL https://ftp.gnu.org/gnu/make/make-4.4.tar.gz && \
     tar -zxvf make.tgz && \
     cd make-4.4 && \
     ./configure && \
@@ -124,7 +128,7 @@ RUN curl -o make.tgz -fsSL https://ftp.gnu.org/gnu/make/make-4.4.tar.gz && \
     make install && \
     ln -sf /usr/local/bin/make /usr/bin/make
 
-RUN curl -o automake.tgz -fsSL https://ftp.gnu.org/gnu/automake/automake-1.17.tar.xz && \
+RUN curl -4 -o automake.tgz -fsSL https://ftp.gnu.org/gnu/automake/automake-1.17.tar.xz && \
     tar -xvf automake.tgz && \
     cd automake-1.17 && \
     ./configure && \
