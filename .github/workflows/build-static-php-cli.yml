@@ -44,12 +44,19 @@ jobs:
             runner: windows-2022
             platform: windows
             gpu_extensions: ",vio,vulkan,parallel"
+        # ctype und filter sind in php-src per Default an, spc konfiguriert
+        # aber mit `--disable-all` - was hier nicht steht, fehlt im micro.sfx.
+        # Beide sind builtin (keine Lib-Abhaengigkeit, kein Groessenzuwachs von
+        # Belang) und werden von normalem PHP-Code als selbstverstaendlich
+        # vorausgesetzt: ohne ctype starb Code Rescue im ausgelieferten Build
+        # mit "Call to undefined function ctype_digit()", waehrend im Dev-PHP
+        # alles lief.
         variant:
           - name: base
-            extensions: "glfw,mbstring,zip,phar,intl"
+            extensions: "glfw,mbstring,zip,phar,intl,ctype,filter"
             steam: false
           - name: steam
-            extensions: "glfw,mbstring,zip,phar,steamworks,intl,gd"
+            extensions: "glfw,mbstring,zip,phar,steamworks,intl,gd,ctype,filter"
             steam: true
         exclude:
           - os: { name: linux-aarch64 }
@@ -234,8 +241,8 @@ jobs:
             --notes "Pre-built micro.sfx binaries for game distribution.
 
           **PHP Version:** 8.5
-          **Extensions (base):** glfw, vio, vulkan, metal (macOS), mbstring, zip, phar
-          **Extensions (steam):** glfw, vio, vulkan, metal (macOS), mbstring, zip, phar, steamworks, intl, gd (freetype)
+          **Extensions (base):** glfw, vio, vulkan, metal (macOS), mbstring, zip, phar, intl, ctype, filter
+          **Extensions (steam):** glfw, vio, vulkan, metal (macOS), mbstring, zip, phar, steamworks, intl, gd (freetype), ctype, filter
 
           Built by workflow run [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" \
             release-files/*.zip
