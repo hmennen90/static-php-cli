@@ -68,7 +68,27 @@ jobs:
       - name: "Checkout"
         uses: actions/checkout@v4
 
+      # Homebrew dropped Intel macOS and shivammathur/setup-php followed
+      # (shivammathur/setup-php#1112): on macos-15-intel the host PHP that runs
+      # spc + composer comes from a static-php-cli CLI build instead.
+      - name: "Setup PHP (static CLI, macos-x86_64)"
+        if: matrix.os.runner == 'macos-15-intel'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/static-php/bin"
+          curl -fsSL -o /tmp/php-cli.tar.gz \
+            https://dl.static-php.dev/static-php-cli/common/php-8.5.8-cli-macos-x86_64.tar.gz
+          tar -xzf /tmp/php-cli.tar.gz -C "$HOME/static-php/bin"
+          chmod +x "$HOME/static-php/bin/php"
+          curl -fsSL -o "$HOME/static-php/bin/composer" https://getcomposer.org/download/latest-stable/composer.phar
+          chmod +x "$HOME/static-php/bin/composer"
+          echo "$HOME/static-php/bin" >> "$GITHUB_PATH"
+          "$HOME/static-php/bin/php" -v
+          "$HOME/static-php/bin/php" -m | tr '\n' ' '; echo
+
       - name: "Setup PHP"
+        if: matrix.os.runner != 'macos-15-intel'
         uses: shivammathur/setup-php@v2
         with:
           php-version: 8.4
