@@ -14,29 +14,7 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
-  # Composer dependencies for the macos-x86_64 job. That runner has no
-  # setup-php any more (Homebrew dropped Intel macOS) and the static php-cli it
-  # uses instead aborts inside libcurl/ngtcp2 (HTTP/3) under Composer's
-  # download pattern, so vendor/ is resolved here on Linux and shipped over.
-  vendor:
-    name: "Composer vendor"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: 8.4
-          tools: composer
-          extensions: curl, openssl, mbstring
-      - run: composer install --no-dev --classmap-authoritative --no-scripts --no-interaction
-      - uses: actions/upload-artifact@v4
-        with:
-          name: composer-vendor
-          path: vendor/
-          include-hidden-files: true
-
   build-php85:
-    needs: vendor
     strategy:
       fail-fast: false
       matrix:
@@ -93,6 +71,9 @@ jobs:
       # Homebrew dropped Intel macOS and shivammathur/setup-php followed
       # (shivammathur/setup-php#1112): on macos-15-intel the host PHP that runs
       # spc + composer comes from a static-php-cli CLI build instead.
+      # Composer is pinned to 2.8.12: 2.9.0 added HTTP/3 (composer#12363) and the
+      # static libcurl's ngtcp2 aborts on it ("ngtcp2_settingslen_version:
+      # Unreachable", composer#12681); 2.8.x stays on HTTP/2.
       - name: "Setup PHP (static CLI, macos-x86_64)"
         if: matrix.os.runner == 'macos-15-intel'
         shell: bash
@@ -103,18 +84,11 @@ jobs:
             https://dl.static-php.dev/static-php-cli/common/php-8.5.8-cli-macos-x86_64.tar.gz
           tar -xzf /tmp/php-cli.tar.gz -C "$HOME/static-php/bin"
           chmod +x "$HOME/static-php/bin/php"
-          curl -fsSL -o "$HOME/static-php/bin/composer" https://getcomposer.org/download/latest-stable/composer.phar
+          curl -fsSL -o "$HOME/static-php/bin/composer" https://getcomposer.org/download/2.8.12/composer.phar
           chmod +x "$HOME/static-php/bin/composer"
           echo "$HOME/static-php/bin" >> "$GITHUB_PATH"
           "$HOME/static-php/bin/php" -v
           "$HOME/static-php/bin/php" -m | tr '\n' ' '; echo
-
-      - name: "Composer vendor from the Linux job (macos-x86_64)"
-        if: matrix.os.runner == 'macos-15-intel'
-        uses: actions/download-artifact@v4
-        with:
-          name: composer-vendor
-          path: vendor/
 
       - name: "Setup PHP"
         if: matrix.os.runner != 'macos-15-intel'
@@ -143,10 +117,7 @@ jobs:
       - name: "Download & Build (macOS)"
         if: matrix.os.platform == 'macos'
         run: |
-          # macos-x86_64 already has vendor/ from the Linux job (see the vendor job).
-          if [ "${{ matrix.os.runner }}" != "macos-15-intel" ]; then
-            composer install --no-dev --classmap-authoritative
-          fi
+          composer install --no-dev --classmap-authoritative
           ./bin/spc doctor --auto-fix || true
           ./bin/spc download \
             --with-php=8.5 \
