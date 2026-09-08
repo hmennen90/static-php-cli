@@ -14,7 +14,29 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
+  # Composer dependencies for the macos-x86_64 job. That runner has no
+  # setup-php any more (Homebrew dropped Intel macOS) and the static php-cli it
+  # uses instead aborts inside libcurl/ngtcp2 (HTTP/3) under Composer's
+  # download pattern, so vendor/ is resolved here on Linux and shipped over.
+  vendor:
+    name: "Composer vendor"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.4
+          tools: composer
+          extensions: curl, openssl, mbstring
+      - run: composer install --no-dev --classmap-authoritative --no-scripts --no-interaction
+      - uses: actions/upload-artifact@v4
+        with:
+          name: composer-vendor
+          path: vendor/
+          include-hidden-files: true
+
   build-php85:
+    needs: vendor
     strategy:
       fail-fast: false
       matrix:
@@ -87,6 +109,13 @@ jobs:
           "$HOME/static-php/bin/php" -v
           "$HOME/static-php/bin/php" -m | tr '\n' ' '; echo
 
+      - name: "Composer vendor from the Linux job (macos-x86_64)"
+        if: matrix.os.runner == 'macos-15-intel'
+        uses: actions/download-artifact@v4
+        with:
+          name: composer-vendor
+          path: vendor/
+
       - name: "Setup PHP"
         if: matrix.os.runner != 'macos-15-intel'
         uses: shivammathur/setup-php@v2
@@ -114,7 +143,10 @@ jobs:
       - name: "Download & Build (macOS)"
         if: matrix.os.platform == 'macos'
         run: |
-          composer install --no-dev --classmap-authoritative
+          # macos-x86_64 already has vendor/ from the Linux job (see the vendor job).
+          if [ "${{ matrix.os.runner }}" != "macos-15-intel" ]; then
+            composer install --no-dev --classmap-authoritative
+          fi
           ./bin/spc doctor --auto-fix || true
           ./bin/spc download \
             --with-php=8.5 \
