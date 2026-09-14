@@ -51,12 +51,20 @@ jobs:
         # vorausgesetzt: ohne ctype starb Code Rescue im ausgelieferten Build
         # mit "Call to undefined function ctype_digit()", waehrend im Dev-PHP
         # alles lief.
+        #
+        # openssl und curl tragen das In-Game-Bugreporting (POST an die
+        # willyoubuyit-API). Ohne openssl gibt es keinen TLS-Stream-Wrapper, also
+        # scheitert schon file_get_contents('https://...'); curl_* existiert ohne
+        # curl gar nicht. Das faellt im Dev-PHP nicht auf - dort sind beide da -
+        # sondern erst im ausgelieferten Build, genau wie damals bei ctype.
+        # Anders als ctype bringen die beiden echte Lib-Abhaengigkeiten mit
+        # (openssl, zlib bzw. curl) und damit ein groesseres Binary.
         variant:
           - name: base
-            extensions: "glfw,mbstring,zip,phar,intl,ctype,filter"
+            extensions: "glfw,mbstring,zip,phar,intl,ctype,filter,openssl,curl"
             steam: false
           - name: steam
-            extensions: "glfw,mbstring,zip,phar,steamworks,intl,gd,ctype,filter"
+            extensions: "glfw,mbstring,zip,phar,steamworks,intl,gd,ctype,filter,openssl,curl"
             steam: true
         exclude:
           - os: { name: linux-aarch64 }
