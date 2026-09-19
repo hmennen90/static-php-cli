@@ -59,12 +59,17 @@ jobs:
         # sondern erst im ausgelieferten Build, genau wie damals bei ctype.
         # Anders als ctype bringen die beiden echte Lib-Abhaengigkeiten mit
         # (openssl, zlib bzw. curl) und damit ein groesseres Binary.
+        #
+        # sockets traegt den Netzwerk-Transport von phpolygon/multiplayer
+        # (SocketTransport ueber TCP, UdpTransport). Ohne sockets fehlen socket_*
+        # im micro.sfx, und Multiplayer faellt - wie ctype - erst im
+        # ausgelieferten Build auf. builtin, keine Lib-Abhaengigkeit.
         variant:
           - name: base
-            extensions: "glfw,mbstring,zip,phar,intl,ctype,filter,openssl,curl"
+            extensions: "glfw,mbstring,zip,phar,intl,ctype,filter,openssl,curl,sockets"
             steam: false
           - name: steam
-            extensions: "glfw,mbstring,zip,phar,steamworks,intl,gd,ctype,filter,openssl,curl"
+            extensions: "glfw,mbstring,zip,phar,steamworks,intl,gd,ctype,filter,openssl,curl,sockets"
             steam: true
         exclude:
           - os: { name: linux-aarch64 }
