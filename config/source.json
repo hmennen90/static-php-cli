@@ -268,7 +268,7 @@
     },
     "ext-rdkafka": {
         "type": "ghtar",
-        "repo": "arnaud-lb/php-rdkafka",
+        "repo": "php-rdkafka/php-rdkafka",
         "path": "php-src/ext/rdkafka",
         "license": {
             "type": "file",
@@ -355,10 +355,9 @@
         }
     },
     "ext-zstd": {
-        "type": "git",
+        "type": "ghtagtar",
+        "repo": "kjdev/php-ext-zstd",
         "path": "php-src/ext/zstd",
-        "rev": "master",
-        "url": "https://github.com/kjdev/php-ext-zstd",
         "license": {
             "type": "file",
             "path": "LICENSE"
@@ -513,7 +512,7 @@
     "ldap": {
         "type": "filelist",
         "url": "https://www.openldap.org/software/download/OpenLDAP/openldap-release/",
-        "regex": "/href=\"(?<file>openldap-(?<version>[^\"]+)\\.tgz)\"/",
+        "regex": "/href=\"(?<file>openldap-(?<version>2\\.6\\.[^\"]+)\\.tgz)\"/",
         "license": {
             "type": "file",
             "path": "LICENSE"
@@ -1216,7 +1215,6 @@
         "path": "php-src/ext/swoole",
         "type": "ghtar",
         "repo": "swoole/swoole-src",
-        "match": "v6\\.+",
         "prefer-stable": true,
         "license": {
             "type": "file",

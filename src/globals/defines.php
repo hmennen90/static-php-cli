@@ -32,12 +32,16 @@ const DANGER_CMD = [
 // spc internal extensions
 const SPC_INTERNAL_EXTENSIONS = [
     'core',
+    'date',
     'hash',
     'json',
+    'lexbor',
     'pcre',
+    'random',
     'reflection',
     'spl',
     'standard',
+    'uri',
 ];
 
 // spc extension alias
