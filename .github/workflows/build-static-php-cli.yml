@@ -222,7 +222,10 @@ jobs:
   release-php85:
     name: "Release / php8.5"
     needs: build-php85
-    if: always() && needs.build-php85.result == 'success'
+    # Only main publishes the production runtime; runs on other branches
+    # (e.g. upstream-sync tests) build and upload artifacts but never touch
+    # the runtime-php8.5 release.
+    if: always() && needs.build-php85.result == 'success' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: "Download micro.sfx artifacts"
