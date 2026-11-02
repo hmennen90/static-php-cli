@@ -20,7 +20,9 @@ jobs:
       matrix:
         os:
           - name: macos-aarch64
-            runner: macos-15
+            # macOS 26: the macos-15 arm64 pool kept failing with "capacity
+            # constraints"; binaries still target macOS 12 (config/env.ini).
+            runner: macos-26
             platform: macos
             gpu_extensions: ",vio,vulkan,metal,parallel"
           - name: macos-x86_64

@@ -33,7 +33,7 @@ jobs:
             os: "ubuntu-latest"
             filename: "spc-linux-aarch64.tar.gz"
           - name: "macos-aarch64"
-            os: "macos-14"
+            os: "macos-15"
             filename: "spc-macos-aarch64.tar.gz"
           - name: "windows-x64"
             os: "ubuntu-latest"
