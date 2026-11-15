@@ -144,11 +144,22 @@ jobs:
       - name: "Download & Build (Linux)"
         if: matrix.os.platform == 'linux'
         run: |
-          if [ "${{ matrix.variant.steam }}" = "true" ]; then
-            SPC_CMD="./bin/spc-gnu-docker"
-          else
-            SPC_CMD="./bin/spc-alpine-docker"
-          fi
+          # Both variants carry gpu_extensions (vio,vulkan,parallel), which need
+          # dl()/dlopen (driver/backend loading) - musl's pure static linking
+          # (bin/spc-alpine-docker) cannot support that (see docs/en/guide/
+          # build-with-glibc.md: "The dl() function in PHP cannot be used to
+          # load dynamic libraries [...] with pure static linking of musl-libc
+          # binaries"). spc silently falls back to a binary dynamically linked
+          # against musl (interpreter /lib/ld-musl-x86_64.so.1) instead of
+          # refusing - that loader is absent on ordinary glibc distributions
+          # (Ubuntu/Debian/Fedora/Arch/SteamOS), so the resulting micro.sfx
+          # fails to even exec there (posix_spawn/execve ENOENT), observed
+          # 2026-11-15 testing the game's non-Steam Linux build for the first
+          # time. bin/spc-gnu-docker (glibc dynamic, everything else static)
+          # is exactly what the steam variant already uses for the same reason
+          # (libsteam_api.so); use it for every Linux variant now that both
+          # carry the GPU extensions.
+          SPC_CMD="./bin/spc-gnu-docker"
           $SPC_CMD download \
             --with-php=8.5 \
             --for-extensions=${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} \
