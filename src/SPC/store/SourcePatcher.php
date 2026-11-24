@@ -48,17 +48,24 @@ class SourcePatcher
                 logger()->info("Library [{$lib->getName()}] patched before buildconf");
             }
         }
-        // PHP 8.6 removed the XtOffsetOf() alias of offsetof(); third-party extensions (php-glfw, php-vulkan,
-        // php-metal, ...) still use it. Provide it again so they build on every version.
+        // PHP 8.6 removed several plain aliases (see UPGRADING.INTERNALS): XtOffsetOf() = offsetof(),
+        // zval_is_true() = zend_is_true(), ZVAL_IS_NULL() = Z_ISNULL(), zval_dtor() = zval_ptr_dtor_nogc(),
+        // ZEND_RESULT_CODE = zend_result. Third-party extensions (php-glfw, php-vulkan, php-metal, ...) still use
+        // them. Provide them again so those extensions build on every version.
         if ($builder->getPHPVersionID() >= 80600) {
             $portability = SOURCE_PATH . '/php-src/Zend/zend_portability.h';
-            if (is_file($portability) && !str_contains((string) file_get_contents($portability), 'define XtOffsetOf')) {
+            if (is_file($portability) && !str_contains((string) file_get_contents($portability), 'spc 8.6 compat aliases')) {
                 file_put_contents(
                     $portability,
-                    "\n#ifndef XtOffsetOf\n#include <stddef.h>\n#define XtOffsetOf(s_type, field) offsetof(s_type, field)\n#endif\n",
+                    "\n/* spc 8.6 compat aliases */\n" .
+                    "#ifndef XtOffsetOf\n#include <stddef.h>\n#define XtOffsetOf(s_type, field) offsetof(s_type, field)\n#endif\n" .
+                    "#ifndef zval_is_true\n#define zval_is_true(op) zend_is_true(op)\n#endif\n" .
+                    "#ifndef ZVAL_IS_NULL\n#define ZVAL_IS_NULL(z) Z_ISNULL_P(z)\n#endif\n" .
+                    "#ifndef zval_dtor\n#define zval_dtor(zvalue) zval_ptr_dtor_nogc(zvalue)\n#endif\n" .
+                    "#ifndef ZEND_RESULT_CODE\n#define ZEND_RESULT_CODE zend_result\n#endif\n",
                     FILE_APPEND
                 );
-                logger()->info('Added XtOffsetOf() compat define to zend_portability.h');
+                logger()->info('Added compat aliases for APIs removed in PHP 8.6 to zend_portability.h');
             }
         }
 
