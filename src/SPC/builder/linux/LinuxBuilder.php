@@ -112,9 +112,12 @@ class LinuxBuilder extends UnixBuilderBase
 
         $this->seekPhpSrcLogFileOnException(fn () => shell()->cd(SOURCE_PATH . '/php-src')->exec(
             $php_configure_env . ' ' .
-            getenv('SPC_CMD_PREFIX_PHP_CONFIGURE') . ' ' .
+            // PHP 8.6 ships a libtool that rejects --with-pic ("obsolete, use --enable-pic")
+            ($this->getPHPVersionID() >= 80600
+                ? str_replace('--with-pic', '--enable-pic', (string) getenv('SPC_CMD_PREFIX_PHP_CONFIGURE'))
+                : getenv('SPC_CMD_PREFIX_PHP_CONFIGURE')) . ' ' .
             ($enableCli ? '--enable-cli ' : '--disable-cli ') .
-            ($enableFpm ? '--enable-fpm ' . ($this->getLib('libacl') !== null ? '--with-fpm-acl ' : '') : '--disable-fpm ') .
+            ($enableFpm ? '--enable-fpm ' .($this->getLib('libacl') !== null ? '--with-fpm-acl ' : '') : '--disable-fpm ') .
             ($enableEmbed ? "--enable-embed={$embed_type} " : '--disable-embed ') .
             ($enableMicro ? '--enable-micro=all-static ' : '--disable-micro ') .
             ($enableCgi ? '--enable-cgi ' : '--disable-cgi ') .

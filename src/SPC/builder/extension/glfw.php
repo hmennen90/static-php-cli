@@ -17,6 +17,18 @@ class glfw extends Extension
             return false;
         }
         FileSystem::copyDir(SOURCE_PATH . '/ext-glfw', SOURCE_PATH . '/php-src/ext/glfw');
+
+        // PHP 8.6 dropped the XtOffsetOf() alias; it was plain offsetof(), which works on every version.
+        $it = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(SOURCE_PATH . '/php-src/ext/glfw', \FilesystemIterator::SKIP_DOTS));
+        foreach ($it as $file) {
+            if (!$file->isFile() || !preg_match('/\.(c|h|cc|cpp|hpp)$/i', $file->getFilename())) {
+                continue;
+            }
+            $path = $file->getPathname();
+            if (str_contains((string) file_get_contents($path), 'XtOffsetOf(')) {
+                FileSystem::replaceFileStr($path, 'XtOffsetOf(', 'offsetof(');
+            }
+        }
         return true;
     }
 
