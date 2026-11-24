@@ -350,7 +350,8 @@ class WindowsBuilder extends BuilderBase
                 }
                 file_put_contents($test_file, file_get_contents(BUILD_BIN_PATH . '\micro.sfx') . $task['content']);
                 chmod($test_file, 0755);
-                [$ret, $out] = cmd()->execWithResult($test_file);
+                // 2>&1: a startup failure (e.g. an extension that cannot initialise) only reports on stderr
+                [$ret, $out] = cmd()->execWithResult($test_file . ' 2>&1');
                 foreach ($task['conditions'] as $condition => $closure) {
                     if (!$closure($ret, $out)) {
                         $raw_out = trim(implode('', $out));

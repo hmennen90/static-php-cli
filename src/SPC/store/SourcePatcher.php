@@ -48,6 +48,27 @@ class SourcePatcher
                 logger()->info("Library [{$lib->getName()}] patched before buildconf");
             }
         }
+        // PHP 8.6 removed several plain aliases (see UPGRADING.INTERNALS): XtOffsetOf() = offsetof(),
+        // zval_is_true() = zend_is_true(), ZVAL_IS_NULL() = Z_ISNULL(), zval_dtor() = zval_ptr_dtor_nogc(),
+        // ZEND_RESULT_CODE = zend_result. Third-party extensions (php-glfw, php-vulkan, php-metal, ...) still use
+        // them. Provide them again so those extensions build on every version.
+        if ($builder->getPHPVersionID() >= 80600) {
+            $portability = SOURCE_PATH . '/php-src/Zend/zend_portability.h';
+            if (is_file($portability) && !str_contains((string) file_get_contents($portability), 'spc 8.6 compat aliases')) {
+                file_put_contents(
+                    $portability,
+                    "\n/* spc 8.6 compat aliases */\n" .
+                    "#ifndef XtOffsetOf\n#include <stddef.h>\n#define XtOffsetOf(s_type, field) offsetof(s_type, field)\n#endif\n" .
+                    "#ifndef zval_is_true\n#define zval_is_true(op) zend_is_true(op)\n#endif\n" .
+                    "#ifndef ZVAL_IS_NULL\n#define ZVAL_IS_NULL(z) Z_ISNULL_P(z)\n#endif\n" .
+                    "#ifndef zval_dtor\n#define zval_dtor(zvalue) zval_ptr_dtor_nogc(zvalue)\n#endif\n" .
+                    "#ifndef ZEND_RESULT_CODE\n#define ZEND_RESULT_CODE zend_result\n#endif\n",
+                    FILE_APPEND
+                );
+                logger()->info('Added compat aliases for APIs removed in PHP 8.6 to zend_portability.h');
+            }
+        }
+
         // patch windows php 8.1 bug
         if (PHP_OS_FAMILY === 'Windows' && $builder->getPHPVersionID() >= 80100 && $builder->getPHPVersionID() < 80200) {
             logger()->info('Patching PHP 8.1 windows Fiber bug');
@@ -173,14 +194,26 @@ class SourcePatcher
         $spc_micro_patches = array_filter($spc_micro_patches, fn ($item) => trim((string) $item) !== '');
         $patch_list = $spc_micro_patches;
         $patches = [];
-        $serial = ['80', '81', '82', '83', '84', '85'];
+        $serial = ['80', '81', '82', '83', '84', '85', '86'];
+        // Patches that phpmicro does not ship yet (e.g. for a new PHP version) live in src/globals/patch/micro/
+        // and win over the phpmicro file of the same version.
+        $local_dir = ROOT_DIR . '/src/globals/patch/micro';
+        $start = array_search($major_ver, $serial, true);
+        if ($start === false) {
+            // Unknown (newer) version: fall back to the newest known one instead of PHP array index 0 ('80').
+            $start = count($serial) - 1;
+        }
         foreach ($patch_list as $patchName) {
             if (file_exists(SOURCE_PATH . "/php-src/sapi/micro/patches/{$patchName}.patch")) {
                 $patches[] = "sapi/micro/patches/{$patchName}.patch";
                 continue;
             }
-            for ($i = array_search($major_ver, $serial, true); $i >= 0; --$i) {
+            for ($i = $start; $i >= 0; --$i) {
                 $tryMajMin = $serial[$i];
+                if (file_exists("{$local_dir}/{$patchName}_{$tryMajMin}.patch")) {
+                    $patches[] = "{$local_dir}/{$patchName}_{$tryMajMin}.patch";
+                    continue 2;
+                }
                 if (!file_exists(SOURCE_PATH . "/php-src/sapi/micro/patches/{$patchName}_{$tryMajMin}.patch")) {
                     continue;
                 }
@@ -192,7 +225,8 @@ class SourcePatcher
 
         foreach ($patches as $patch) {
             logger()->info("Patching micro with {$patch}");
-            self::patchFile(SOURCE_PATH . "/php-src/{$patch}", SOURCE_PATH . '/php-src');
+            // Local overrides are absolute paths, phpmicro's own patches are relative to the php-src root.
+            self::patchFile(FileSystem::isRelativePath($patch) ? SOURCE_PATH . "/php-src/{$patch}" : $patch, SOURCE_PATH . '/php-src');
         }
 
         return true;
@@ -647,7 +681,9 @@ class SourcePatcher
                 FileSystem::replaceFileStr(SOURCE_PATH . '/php-src/ext/gd/libgd/gdft.c', '#ifndef MSWIN32', '#ifndef _WIN32');
             }
             // custom config.w32, because official config.w32 is hard-coded many things
-            if ($ver_id >= 80500) {
+            if ($ver_id >= 80600) {
+                $origin = file_get_contents(ROOT_DIR . '/src/globals/extra/gd_config_86.w32');
+            } elseif ($ver_id >= 80500) {
                 $origin = file_get_contents(ROOT_DIR . '/src/globals/extra/gd_config_85.w32');
             } elseif ($ver_id >= 80100) {
                 $origin = file_get_contents(ROOT_DIR . '/src/globals/extra/gd_config_81.w32');

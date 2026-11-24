@@ -14,10 +14,11 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
-  build-php85:
+  build:
     strategy:
       fail-fast: false
       matrix:
+        php: ["8.5", "8.6"]
         os:
           - name: macos-aarch64
             # macOS 26: the macos-15 arm64 pool kept failing with "capacity
@@ -76,7 +77,9 @@ jobs:
         exclude:
           - os: { name: linux-aarch64 }
             variant: { name: steam }
-    name: "${{ matrix.variant.name }} / ${{ matrix.os.name }} / php8.5"
+    name: "${{ matrix.variant.name }} / ${{ matrix.os.name }} / php${{ matrix.php }}"
+    # PHP 8.6 is a dry run: it may fail without failing the run or the 8.5 release.
+    continue-on-error: ${{ matrix.php == '8.6' }}
     runs-on: ${{ matrix.os.runner }}
     timeout-minutes: 120
     steps:
@@ -135,7 +138,7 @@ jobs:
           composer install --no-dev --classmap-authoritative
           ./bin/spc doctor --auto-fix || true
           ./bin/spc download \
-            --with-php=8.5 \
+            --with-php=${{ matrix.php }} \
             --for-extensions=${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} \
             --ignore-cache-sources=php-src \
             --prefer-pre-built
@@ -161,7 +164,7 @@ jobs:
           # carry the GPU extensions.
           SPC_CMD="./bin/spc-gnu-docker"
           $SPC_CMD download \
-            --with-php=8.5 \
+            --with-php=${{ matrix.php }} \
             --for-extensions=${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }} \
             --ignore-cache-sources=php-src \
             --prefer-pre-built
@@ -175,7 +178,7 @@ jobs:
         if: matrix.os.platform == 'windows'
         run: |
           ./bin/spc doctor
-          ./bin/spc download --with-php="8.5" --for-extensions="${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }}" --prefer-pre-built
+          ./bin/spc download --with-php="${{ matrix.php }}" --for-extensions="${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }}" --prefer-pre-built
           ./bin/spc build "${{ matrix.variant.extensions }}${{ matrix.os.gpu_extensions }}" --build-micro --enable-zts --enable-micro-win32 -I "memory_limit=-1" --without-micro-ext-test
 
       - name: "Upload build logs"
@@ -183,13 +186,13 @@ jobs:
         if: failure() || matrix.os.platform == 'windows'
         uses: actions/upload-artifact@v4
         with:
-          name: build-logs-${{ matrix.variant.name }}-8.5-${{ matrix.os.name }}
+          name: build-logs-${{ matrix.variant.name }}-${{ matrix.php }}-${{ matrix.os.name }}
           path: log/
 
       - name: "Upload micro.sfx"
         uses: actions/upload-artifact@v4
         with:
-          name: micro-sfx-${{ matrix.variant.name }}-8.5-${{ matrix.os.name }}
+          name: micro-sfx-${{ matrix.variant.name }}-${{ matrix.php }}-${{ matrix.os.name }}
           path: |
             buildroot/bin/micro.sfx
             buildroot/bin/micro.sfx.exe
@@ -198,7 +201,7 @@ jobs:
         if: matrix.os.platform == 'windows'
         uses: actions/upload-artifact@v4
         with:
-          name: vulkan-1-dll-${{ matrix.variant.name }}-8.5-${{ matrix.os.name }}
+          name: vulkan-1-dll-${{ matrix.variant.name }}-${{ matrix.php }}-${{ matrix.os.name }}
           path: buildroot/bin/vulkan-1.dll
 
       # The d3d11/d3d12 vio backends hard-import D3DCOMPILER_47.dll (runtime HLSL
@@ -213,14 +216,14 @@ jobs:
         if: matrix.os.platform == 'windows'
         uses: actions/upload-artifact@v4
         with:
-          name: d3dcompiler-47-dll-${{ matrix.variant.name }}-8.5-${{ matrix.os.name }}
+          name: d3dcompiler-47-dll-${{ matrix.variant.name }}-${{ matrix.php }}-${{ matrix.os.name }}
           path: buildroot/bin/d3dcompiler_47.dll
 
       - name: "Upload libsteam_api"
         if: matrix.variant.steam
         uses: actions/upload-artifact@v4
         with:
-          name: libsteam-api-8.5-${{ matrix.os.name }}
+          name: libsteam-api-${{ matrix.php }}-${{ matrix.os.name }}
           path: |
             buildroot/lib/libsteam_api.dylib
             buildroot/lib/libsteam_api.so
@@ -229,43 +232,58 @@ jobs:
       - name: "Upload licenses"
         uses: actions/upload-artifact@v4
         with:
-          name: licenses-${{ matrix.variant.name }}-8.5-${{ matrix.os.name }}
+          name: licenses-${{ matrix.variant.name }}-${{ matrix.php }}-${{ matrix.os.name }}
           path: buildroot/license/
 
-  release-php85:
-    name: "Release / php8.5"
-    needs: build-php85
+  release:
+    name: "Release / php${{ matrix.php }}"
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ["8.5", "8.6"]
     # Only main publishes the production runtime; runs on other branches
     # (e.g. upstream-sync tests) build and upload artifacts but never touch
-    # the runtime-php8.5 release.
-    if: always() && needs.build-php85.result == 'success' && github.ref == 'refs/heads/main'
+    # the runtime-php<version> release.
+    if: always() && needs.build.result == 'success' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: "Download micro.sfx artifacts"
         uses: actions/download-artifact@v4
         with:
-          pattern: micro-sfx-*-8.5-*
+          pattern: micro-sfx-*-${{ matrix.php }}-*
           path: release-assets/
 
       - name: "Download vulkan-1.dll artifacts"
         uses: actions/download-artifact@v4
         with:
-          pattern: vulkan-1-dll-*-8.5-*
+          pattern: vulkan-1-dll-*-${{ matrix.php }}-*
           path: release-assets/
 
       - name: "Download d3dcompiler_47.dll artifacts"
         uses: actions/download-artifact@v4
         with:
-          pattern: d3dcompiler-47-dll-*-8.5-*
+          pattern: d3dcompiler-47-dll-*-${{ matrix.php }}-*
           path: release-assets/
 
       - name: "Download libsteam artifacts"
         uses: actions/download-artifact@v4
         with:
-          pattern: libsteam-api-8.5-*
+          pattern: libsteam-api-${{ matrix.php }}-*
           path: release-assets/
 
+      - name: "Check artifacts"
+        id: assets
+        run: |
+          if [ -n "$(ls -A release-assets 2>/dev/null)" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::No PHP ${{ matrix.php }} artifacts (dry run failed), nothing released"
+          fi
+
       - name: "Prepare release files"
+        if: steps.assets.outputs.present == 'true'
         run: |
           mkdir -p release-files
           cd release-assets
@@ -277,11 +295,12 @@ jobs:
           done
 
       - name: "Create or update release"
+        if: steps.assets.outputs.present == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="runtime-php8.5"
-          TITLE="Game Runtime PHP 8.5"
+          TAG="runtime-php${{ matrix.php }}"
+          TITLE="Game Runtime PHP ${{ matrix.php }}"
 
           # Delete existing release if it exists
           gh release delete "$TAG" -R ${{ github.repository }} --yes 2>/dev/null || true
@@ -292,7 +311,7 @@ jobs:
             --title "$TITLE" \
             --notes "Pre-built micro.sfx binaries for game distribution.
 
-          **PHP Version:** 8.5
+          **PHP Version:** ${{ matrix.php }}
           **Extensions (base):** glfw, vio, vulkan, metal (macOS), mbstring, zip, phar, intl, ctype, filter
           **Extensions (steam):** glfw, vio, vulkan, metal (macOS), mbstring, zip, phar, steamworks, intl, gd (freetype), ctype, filter
 

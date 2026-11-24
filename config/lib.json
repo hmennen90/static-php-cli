@@ -710,6 +710,7 @@
             "libwebp.lib",
             "libwebpdecoder.lib",
             "libwebpdemux.lib",
+            "libwebpmux.lib",
             "libsharpyuv.lib"
         ]
     },

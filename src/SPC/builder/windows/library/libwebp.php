@@ -32,7 +32,8 @@ class libwebp extends WindowsLibraryBase
                 '-DWEBP_BUILD_IMG2WEBP=OFF ' .
                 '-DWEBP_BUILD_VWEBP=OFF ' .
                 '-DWEBP_BUILD_WEBPINFO=OFF ' .
-                '-DWEBP_BUILD_LIBWEBPMUX=OFF ' .
+                // PHP 8.6's bundled gd links libwebpmux (animated WebP encoder); the mux command line tool stays off
+                '-DWEBP_BUILD_LIBWEBPMUX=ON ' .
                 '-DWEBP_BUILD_WEBPMUX=OFF ' .
                 '-DWEBP_BUILD_EXTRAS=OFF ' .
                 '-DCMAKE_INSTALL_PREFIX=' . BUILD_ROOT_PATH . ' '
