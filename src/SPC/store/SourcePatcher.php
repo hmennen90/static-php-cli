@@ -173,14 +173,26 @@ class SourcePatcher
         $spc_micro_patches = array_filter($spc_micro_patches, fn ($item) => trim((string) $item) !== '');
         $patch_list = $spc_micro_patches;
         $patches = [];
-        $serial = ['80', '81', '82', '83', '84', '85'];
+        $serial = ['80', '81', '82', '83', '84', '85', '86'];
+        // Patches that phpmicro does not ship yet (e.g. for a new PHP version) live in src/globals/patch/micro/
+        // and win over the phpmicro file of the same version.
+        $local_dir = ROOT_DIR . '/src/globals/patch/micro';
+        $start = array_search($major_ver, $serial, true);
+        if ($start === false) {
+            // Unknown (newer) version: fall back to the newest known one instead of PHP array index 0 ('80').
+            $start = count($serial) - 1;
+        }
         foreach ($patch_list as $patchName) {
             if (file_exists(SOURCE_PATH . "/php-src/sapi/micro/patches/{$patchName}.patch")) {
                 $patches[] = "sapi/micro/patches/{$patchName}.patch";
                 continue;
             }
-            for ($i = array_search($major_ver, $serial, true); $i >= 0; --$i) {
+            for ($i = $start; $i >= 0; --$i) {
                 $tryMajMin = $serial[$i];
+                if (file_exists("{$local_dir}/{$patchName}_{$tryMajMin}.patch")) {
+                    $patches[] = "{$local_dir}/{$patchName}_{$tryMajMin}.patch";
+                    continue 2;
+                }
                 if (!file_exists(SOURCE_PATH . "/php-src/sapi/micro/patches/{$patchName}_{$tryMajMin}.patch")) {
                     continue;
                 }
@@ -192,7 +204,8 @@ class SourcePatcher
 
         foreach ($patches as $patch) {
             logger()->info("Patching micro with {$patch}");
-            self::patchFile(SOURCE_PATH . "/php-src/{$patch}", SOURCE_PATH . '/php-src');
+            // Local overrides are absolute paths, phpmicro's own patches are relative to the php-src root.
+            self::patchFile(FileSystem::isRelativePath($patch) ? SOURCE_PATH . "/php-src/{$patch}" : $patch, SOURCE_PATH . '/php-src');
         }
 
         return true;
