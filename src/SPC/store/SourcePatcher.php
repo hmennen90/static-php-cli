@@ -48,6 +48,20 @@ class SourcePatcher
                 logger()->info("Library [{$lib->getName()}] patched before buildconf");
             }
         }
+        // PHP 8.6 removed the XtOffsetOf() alias of offsetof(); third-party extensions (php-glfw, php-vulkan,
+        // php-metal, ...) still use it. Provide it again so they build on every version.
+        if ($builder->getPHPVersionID() >= 80600) {
+            $portability = SOURCE_PATH . '/php-src/Zend/zend_portability.h';
+            if (is_file($portability) && !str_contains((string) file_get_contents($portability), 'define XtOffsetOf')) {
+                file_put_contents(
+                    $portability,
+                    "\n#ifndef XtOffsetOf\n#include <stddef.h>\n#define XtOffsetOf(s_type, field) offsetof(s_type, field)\n#endif\n",
+                    FILE_APPEND
+                );
+                logger()->info('Added XtOffsetOf() compat define to zend_portability.h');
+            }
+        }
+
         // patch windows php 8.1 bug
         if (PHP_OS_FAMILY === 'Windows' && $builder->getPHPVersionID() >= 80100 && $builder->getPHPVersionID() < 80200) {
             logger()->info('Patching PHP 8.1 windows Fiber bug');
