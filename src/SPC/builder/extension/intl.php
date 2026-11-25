@@ -15,10 +15,12 @@ class intl extends Extension
     public function patchBeforeBuildconf(): bool
     {
         if ($this->builder instanceof WindowsBuilder) {
-            FileSystem::replaceFileStr(
+            // Match the "shared" argument whatever the source list is: PHP 8.6 added intl_icu_compat.c to it,
+            // which made the old exact-string replacement a silent no-op (intl came out as a separate php_intl.dll).
+            FileSystem::replaceFileRegex(
                 SOURCE_PATH . '/php-src/ext/intl/config.w32',
-                'EXTENSION("intl", "php_intl.c intl_convert.c intl_convertcpp.cpp intl_error.c ", true,',
-                'EXTENSION("intl", "php_intl.c intl_convert.c intl_convertcpp.cpp intl_error.c ", PHP_INTL_SHARED,'
+                '/(EXTENSION\("intl",\s*"[^"]*",\s*)true,/',
+                '${1}PHP_INTL_SHARED,'
             );
             return true;
         }
